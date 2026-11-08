@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.local
+*.log
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# 작업용 영수증 사진 (개인정보)
+samples/
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png

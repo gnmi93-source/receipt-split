@@ -1,0 +1,1249 @@
+<title>영수증 정산기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper: #F1F2EC;
+    --card: #FBFBF7;
+    --card-2: #E9EBE1;
+    --ink: #1E241F;
+    --ink-2: #5B645C;
+    --ink-3: #8A938A;
+    --rule: #D6D9CE;
+    --rule-2: #C1C7B7;
+    --accent: #1C6B5A;
+    --accent-ink: #0E4538;
+    --accent-soft: #DEEDE6;
+    --warn: #96571F;
+    --warn-soft: #F4E8D6;
+    --alert: #A1352F;
+    --alert-soft: #F7E1DE;
+    --shadow: 0 1px 0 rgba(30, 36, 31, .04), 0 10px 28px -20px rgba(30, 36, 31, .45);
+    --sans: "IBM Plex Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    --serif: "Gowun Batang", "Nanum Myeongjo", Georgia, serif;
+    --mono: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #131613;
+      --card: #1C201C;
+      --card-2: #252A25;
+      --ink: #E9ECE4;
+      --ink-2: #A2ABA2;
+      --ink-3: #78817A;
+      --rule: #2F352E;
+      --rule-2: #3D443C;
+      --accent: #65C3A9;
+      --accent-ink: #A9E1D0;
+      --accent-soft: #1C332B;
+      --warn: #D7A369;
+      --warn-soft: #32271A;
+      --alert: #E08A85;
+      --alert-soft: #39211F;
+      --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 10px 28px -20px rgba(0, 0, 0, .8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #131613;
+    --card: #1C201C;
+    --card-2: #252A25;
+    --ink: #E9ECE4;
+    --ink-2: #A2ABA2;
+    --ink-3: #78817A;
+    --rule: #2F352E;
+    --rule-2: #3D443C;
+    --accent: #65C3A9;
+    --accent-ink: #A9E1D0;
+    --accent-soft: #1C332B;
+    --warn: #D7A369;
+    --warn-soft: #32271A;
+    --alert: #E08A85;
+    --alert-soft: #39211F;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 10px 28px -20px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px; }
+
+  /* ---- header ---- */
+  .top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 20px; padding-bottom: 18px; border-bottom: 2px solid var(--ink); }
+  .brand { flex: 1 1 260px; min-width: 0; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--ink-3); margin-bottom: 6px;
+  }
+  h1 { font-family: var(--serif); font-size: clamp(30px, 5.5vw, 44px); font-weight: 700; line-height: 1.1; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+  #title-input {
+    font-family: var(--serif); font-size: clamp(30px, 5.5vw, 44px); font-weight: 700; line-height: 1.1;
+    background: none; border: 0; border-bottom: 1px dashed var(--rule-2); padding: 0 2px 2px;
+    width: 100%; max-width: 440px; letter-spacing: -.01em;
+  }
+  #title-input::placeholder { color: var(--ink-3); }
+  .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+  .who img { width: 26px; height: 26px; border-radius: 50%; display: block; }
+  .sync { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; color: var(--ink-2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .sync[data-state="local"] .dot { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+  .sync[data-state="wait"] .dot { background: var(--ink-3); box-shadow: 0 0 0 3px var(--card-2); }
+
+  /* ---- layout ---- */
+  .deck { display: grid; grid-template-columns: minmax(0, 1fr) 342px; gap: 26px; align-items: start; margin-top: 26px; }
+  @media (max-width: 920px) { .deck { grid-template-columns: minmax(0, 1fr); } }
+  .col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+  section.card {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 4px;
+    box-shadow: var(--shadow); padding: 18px 18px 20px;
+  }
+  .head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .head h2 { font-family: var(--serif); font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+  .head .count { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); letter-spacing: .04em; }
+  .head .spacer { flex: 1; }
+  .hint { font-size: 12.5px; color: var(--ink-2); margin: -6px 0 14px; }
+
+  /* ---- buttons ---- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule-2);
+    background: var(--card); border-radius: 3px; padding: 7px 12px; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background .12s, border-color .12s, color .12s;
+  }
+  .btn:hover:not(:disabled) { background: var(--card-2); border-color: var(--ink-3); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  :root[data-theme="dark"] .btn.primary, :root:not([data-theme="light"]) .btn.primary { color: var(--paper); }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .btn.primary { color: #fff; } }
+  .btn.primary:hover:not(:disabled) { background: var(--accent-ink); border-color: var(--accent-ink); }
+  .btn.ghost { border-color: transparent; background: none; color: var(--ink-2); padding: 5px 8px; }
+  .btn.ghost:hover:not(:disabled) { background: var(--card-2); color: var(--ink); }
+  .btn.danger { color: var(--alert); border-color: transparent; background: none; padding: 5px 8px; }
+  .btn.danger:hover:not(:disabled) { background: var(--alert-soft); }
+  .btn.sm { padding: 4px 9px; font-size: 12px; }
+  .xb { border: 0; background: none; cursor: pointer; color: var(--ink-3); padding: 4px 6px; border-radius: 3px; line-height: 1; font-size: 15px; }
+  .xb:hover { color: var(--alert); background: var(--alert-soft); }
+
+  /* ---- fields ---- */
+  .f {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 3px; padding: 6px 9px; width: 100%;
+    transition: border-color .12s;
+  }
+  .f:hover { border-color: var(--rule-2); }
+  .f:focus { border-color: var(--accent); outline: none; }
+  .f.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---- item rows ---- */
+  .items { display: flex; flex-direction: column; gap: 0; }
+  .ihead, .irow {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto 30px;
+    gap: 8px; align-items: center;
+  }
+  .ihead {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-3); padding-bottom: 7px; border-bottom: 1px solid var(--rule);
+  }
+  .irow { padding: 7px 0; border-bottom: 1px dotted var(--rule); }
+  .nums { display: flex; align-items: center; gap: 8px; }
+  .nums .price { width: 104px; }
+  .nums .qty { width: 58px; }
+  .nums .line {
+    width: 96px; font-family: var(--mono); text-align: right;
+    font-variant-numeric: tabular-nums; font-size: 13.5px;
+  }
+  .ihead .nums span { text-align: right; }
+  .irow.orphan .line { color: var(--warn); }
+  .add-row { display: flex; gap: 8px; margin-top: 14px; }
+  .add-row .f { flex: 1; }
+  .add-row .f.num { flex: 0 0 110px; }
+  .add-row .f.qty { flex: 0 0 66px; }
+  @media (max-width: 560px) {
+    .ihead { display: none; }
+    .irow { grid-template-columns: minmax(0, 1fr) 30px; grid-template-areas: "name x" "nums nums"; gap: 6px 8px; }
+    .irow > .name { grid-area: name; }
+    .irow > .nums { grid-area: nums; }
+    .irow > .xb { grid-area: x; }
+    .nums .price { width: 100px; }
+    .nums .qty { width: 56px; }
+    .nums .line { flex: 1; width: auto; }
+    .add-row { flex-wrap: wrap; }
+  }
+  .subtotal {
+    display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; padding-top: 12px;
+    border-top: 2px solid var(--ink); font-family: var(--mono); font-variant-numeric: tabular-nums;
+  }
+  .subtotal b { font-size: 16px; }
+
+  /* ---- people ---- */
+  .people { display: flex; flex-wrap: wrap; gap: 9px; }
+  .person {
+    display: flex; align-items: center; gap: 7px; background: var(--paper);
+    border: 1px solid var(--rule); border-radius: 999px; padding: 5px 7px 5px 12px;
+  }
+  .person.mine { border-color: var(--accent); background: var(--accent-soft); }
+  .person input {
+    background: none; border: 0; width: 6.2em; min-width: 3em; font-weight: 500; padding: 0;
+  }
+  .person .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--accent-ink); }
+  :root[data-theme="dark"] .person .tag, :root:not([data-theme="light"]) .person .tag { color: var(--accent); }
+  .person img { width: 20px; height: 20px; border-radius: 50%; display: block; }
+  .claim { border: 0; background: none; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--ink-3); padding: 3px 5px; border-radius: 3px; }
+  .claim:hover { color: var(--accent); background: var(--accent-soft); }
+
+  /* ---- segmented ---- */
+  .seg { display: inline-flex; background: var(--card-2); border-radius: 3px; padding: 2px; gap: 2px; }
+  .seg button {
+    border: 0; background: none; cursor: pointer; padding: 5px 11px; border-radius: 2px;
+    font-size: 12.5px; font-weight: 500; color: var(--ink-2);
+  }
+  .seg button[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); font-weight: 600; }
+
+  /* ---- my picks ---- */
+  .picks { display: flex; flex-direction: column; gap: 7px; }
+  .pick {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 10px 13px; cursor: pointer; transition: border-color .12s, background .12s;
+  }
+  .pick:hover { border-color: var(--rule-2); }
+  .pick[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .pick .box {
+    flex: 0 0 18px; height: 18px; border: 1.5px solid var(--rule-2); border-radius: 3px;
+    display: grid; place-items: center; font-size: 12px; color: transparent;
+  }
+  .pick[aria-pressed="true"] .box { border-color: var(--accent); background: var(--accent); color: var(--card); }
+  .pick .pname { flex: 1; min-width: 0; font-weight: 500; }
+  .pick .meta { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .pick .share { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; min-width: 5.6em; text-align: right; }
+  .pick[aria-pressed="true"] .share { color: var(--accent-ink); font-weight: 600; }
+  :root[data-theme="dark"] .pick[aria-pressed="true"] .share, :root:not([data-theme="light"]) .pick[aria-pressed="true"] .share { color: var(--accent); }
+
+  /* ---- matrix ---- */
+  .mwrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+  table.mx { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+  table.mx th, table.mx td { border-bottom: 1px dotted var(--rule); padding: 7px 8px; text-align: center; white-space: nowrap; }
+  table.mx thead th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: var(--ink-3); border-bottom: 1px solid var(--rule); font-weight: 500; }
+  table.mx th.rh {
+    text-align: left; position: sticky; left: 0; background: var(--card); z-index: 1;
+    font-weight: 500; max-width: 190px; overflow: hidden; text-overflow: ellipsis;
+  }
+  table.mx thead th.rh { z-index: 2; }
+  table.mx tr.orphan th.rh { color: var(--warn); }
+  table.mx td.all { font-family: var(--mono); font-size: 11px; }
+  .cell {
+    width: 26px; height: 26px; border-radius: 3px; border: 1.5px solid var(--rule-2);
+    background: var(--paper); cursor: pointer; display: grid; place-items: center;
+    color: transparent; font-size: 13px; padding: 0;
+  }
+  .cell[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--card); }
+  .cell:hover { border-color: var(--accent); }
+  tfoot th, tfoot td { border-bottom: 0; border-top: 2px solid var(--ink); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; padding-top: 9px; }
+
+  /* ---- adjustments ---- */
+  .adjs { display: flex; flex-direction: column; gap: 8px; }
+  .adj { display: grid; grid-template-columns: minmax(0, 1fr) auto 30px; gap: 8px; align-items: center; }
+  .adj .ctl { display: flex; align-items: center; gap: 8px; }
+  .adj .ctl select { width: 92px; }
+  .adj .ctl .f.num { width: 96px; }
+  .adj .amt { width: 98px; font-family: var(--mono); text-align: right; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .adj.discount .amt { color: var(--accent); }
+  .adj.extra .amt { color: var(--warn); }
+  @media (max-width: 620px) {
+    .adj { grid-template-columns: minmax(0, 1fr) 30px; grid-template-areas: "label x" "ctl ctl"; gap: 6px 8px; }
+    .adj > .label { grid-area: label; }
+    .adj > .ctl { grid-area: ctl; }
+    .adj > .xb { grid-area: x; }
+    .adj .amt { flex: 1; width: auto; }
+  }
+
+  /* ---- verify ---- */
+  .verify { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+  .verify .f.num { flex: 0 0 132px; }
+  .flag { font-family: var(--mono); font-size: 12px; padding: 5px 9px; border-radius: 3px; font-variant-numeric: tabular-nums; }
+  .flag.ok { background: var(--accent-soft); color: var(--accent-ink); }
+  :root[data-theme="dark"] .flag.ok, :root:not([data-theme="light"]) .flag.ok { color: var(--accent); }
+  .flag.bad { background: var(--alert-soft); color: var(--alert); }
+
+  /* ---- receipt ---- */
+  .rail { position: sticky; top: 18px; display: flex; flex-direction: column; gap: 14px; }
+  @media (max-width: 920px) { .rail { position: static; } }
+  .receipt {
+    position: relative; background: var(--card); padding: 22px 20px 26px;
+    box-shadow: var(--shadow); font-family: var(--mono);
+  }
+  .receipt::before, .receipt::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 8px; pointer-events: none;
+  }
+  .receipt::before { top: 0; background: radial-gradient(circle at 50% 0, var(--paper) 4.2px, #0000 4.6px) 0 0 / 11px 8px repeat-x; }
+  .receipt::after { bottom: 0; background: radial-gradient(circle at 50% 100%, var(--paper) 4.2px, #0000 4.6px) 0 0 / 11px 8px repeat-x; }
+  .r-title { text-align: center; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-2); padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px dashed var(--rule-2); }
+  .r-rows { display: flex; flex-direction: column; gap: 9px; }
+  .r-row { display: flex; align-items: baseline; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .r-row .nm { font-family: var(--sans); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 58%; }
+  .r-row .lead { flex: 1; border-bottom: 1px dotted var(--rule-2); margin: 0 6px; transform: translateY(-4px); }
+  .r-row .amt { font-weight: 500; }
+  .r-row.me .nm, .r-row.me .amt { color: var(--accent-ink); font-weight: 600; }
+  :root[data-theme="dark"] .r-row.me .nm, :root[data-theme="dark"] .r-row.me .amt,
+  :root:not([data-theme="light"]) .r-row.me .nm, :root:not([data-theme="light"]) .r-row.me .amt { color: var(--accent); }
+  .r-row.orphan .nm, .r-row.orphan .amt { color: var(--warn); }
+  .r-sub { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .r-break { border-top: 1px dashed var(--rule-2); margin: 14px 0; }
+  .r-total { display: flex; justify-content: space-between; align-items: baseline; border-top: 2px solid var(--ink); padding-top: 11px; margin-top: 12px; font-variant-numeric: tabular-nums; }
+  .r-total .lbl { font-family: var(--sans); font-weight: 600; font-size: 13px; }
+  .r-total .val { font-size: 19px; font-weight: 600; }
+  .r-note { font-family: var(--sans); font-size: 11.5px; line-height: 1.5; color: var(--ink-2); margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--rule-2); }
+  .r-note.warn { color: var(--warn); }
+  .r-empty { text-align: center; color: var(--ink-3); font-size: 12.5px; padding: 18px 0; font-family: var(--sans); }
+
+  /* ---- misc ---- */
+  .empty { text-align: center; padding: 26px 12px; color: var(--ink-2); font-size: 13.5px; }
+  .banner { border: 1px solid var(--rule); border-left: 3px solid var(--warn); background: var(--warn-soft); color: var(--ink); padding: 10px 13px; border-radius: 3px; font-size: 13px; margin-bottom: 18px; }
+  .scan-box { border: 1px dashed var(--rule-2); border-radius: 3px; padding: 14px; margin-bottom: 16px; background: var(--paper); }
+  .scan-box .sh { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .scan-box .st { font-family: var(--mono); font-size: 12px; color: var(--ink-2); flex: 1; min-width: 120px; }
+  .scan-prev { display: flex; gap: 12px; margin-top: 12px; align-items: flex-start; }
+  .scan-prev img { width: 72px; border-radius: 3px; border: 1px solid var(--rule); display: block; }
+  .scan-list { flex: 1; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+  .scan-list .sl { display: flex; justify-content: space-between; gap: 10px; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .scan-list .sl span:first-child { font-family: var(--sans); }
+  .scan-acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    background: var(--ink); color: var(--paper); padding: 9px 15px; border-radius: 3px;
+    font-size: 13px; box-shadow: 0 8px 24px -12px rgba(0, 0, 0, .6); z-index: 50; max-width: 86vw;
+  }
+  .foot { margin-top: 34px; font-size: 12px; color: var(--ink-3); text-align: center; font-family: var(--mono); letter-spacing: .04em; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="eyebrow">함께 쓰는 더치페이 장부</div>
+      <input id="title-input" aria-label="정산 이름" placeholder="영수증 정산기" maxlength="40">
+    </div>
+    <div class="sync" id="sync" data-state="wait"><span class="dot"></span><span id="sync-text">연결 중</span></div>
+    <div class="who" id="who" hidden><img id="who-img" alt=""><span id="who-name"></span></div>
+  </header>
+
+  <div id="banner-slot"></div>
+
+  <div class="deck">
+    <div class="col">
+      <section class="card">
+        <div class="head">
+          <h2>영수증 항목</h2>
+          <span class="count" id="items-count"></span>
+          <span class="spacer"></span>
+          <button class="btn sm" id="scan-btn" hidden>영수증 사진 인식</button>
+        </div>
+        <input type="file" id="scan-file" accept="image/*" hidden>
+        <div id="scan-slot"></div>
+
+        <div class="ihead">
+          <span>메뉴</span>
+          <div class="nums"><span class="price">단가</span><span class="qty">수량</span><span class="line">금액</span></div>
+          <span></span>
+        </div>
+        <div class="items" id="items"></div>
+        <div id="items-empty" class="empty">메뉴를 추가하거나 영수증 사진을 인식해 주세요.</div>
+
+        <form class="add-row" id="add-item">
+          <input class="f" name="name" placeholder="메뉴명" aria-label="메뉴명" required>
+          <input class="f num" name="price" placeholder="단가" aria-label="단가" inputmode="numeric">
+          <input class="f num qty" name="qty" placeholder="수량" aria-label="수량" inputmode="numeric">
+          <button class="btn" type="submit">추가</button>
+        </form>
+
+        <div class="subtotal"><span>항목 합계</span><b id="gross">0원</b></div>
+      </section>
+
+      <section class="card">
+        <div class="head">
+          <h2>참여자</h2>
+          <span class="count" id="people-count"></span>
+        </div>
+        <p class="hint">각자 자기 이름 옆의 <b>내 이름</b>을 누르면, 아래에서 자기가 먹은 메뉴만 골라 담을 수 있습니다.</p>
+        <div class="people" id="people"></div>
+        <form class="add-row" id="add-person" style="margin-top:12px">
+          <input class="f" name="name" placeholder="이름" aria-label="참여자 이름" required maxlength="20">
+          <button class="btn" type="submit">추가</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="head">
+          <h2>메뉴 배분</h2>
+          <span class="spacer"></span>
+          <div class="seg" id="seg" role="tablist">
+            <button role="tab" id="tab-mine" aria-selected="true">내 선택</button>
+            <button role="tab" id="tab-all" aria-selected="false">전체 배분표</button>
+          </div>
+        </div>
+        <p class="hint">여러 사람이 같은 메뉴를 고르면 그 메뉴 금액은 고른 사람 수로 나눠 담깁니다.</p>
+        <div id="view-mine"></div>
+        <div id="view-all" hidden></div>
+      </section>
+
+      <section class="card">
+        <div class="head">
+          <h2>할인 · 추가금</h2>
+          <span class="count" id="adj-count"></span>
+        </div>
+        <p class="hint">할인과 추가금은 각자 담은 금액 비율대로 나눠 반영됩니다.</p>
+        <div class="adjs" id="adjs"></div>
+        <form class="add-row" id="add-adj" style="margin-top:12px">
+          <input class="f" name="label" placeholder="항목명 (예: 통신사 할인)" aria-label="할인·추가금 항목명" required maxlength="30">
+          <select class="f" name="kind" aria-label="종류" style="flex:0 0 94px">
+            <option value="discount">할인</option>
+            <option value="extra">추가금</option>
+          </select>
+          <select class="f" name="mode" aria-label="방식" style="flex:0 0 94px">
+            <option value="amount">금액</option>
+            <option value="percent">％</option>
+          </select>
+          <input class="f num" name="value" placeholder="0" aria-label="값" inputmode="numeric">
+          <button class="btn" type="submit">추가</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="head"><h2>영수증 총액 확인</h2></div>
+        <p class="hint">영수증에 인쇄된 결제 금액을 적어 두면, 계산한 총액과 어긋날 때 바로 알려 줍니다.</p>
+        <div class="verify">
+          <input class="f num" id="receipt-total" placeholder="0" aria-label="영수증 결제 금액" inputmode="numeric">
+          <span>원</span>
+          <span class="flag" id="verify-flag" hidden></span>
+          <span class="spacer" style="flex:1"></span>
+          <button class="btn danger sm" id="reset-btn">전체 초기화</button>
+        </div>
+      </section>
+    </div>
+
+    <aside class="rail">
+      <div class="receipt">
+        <div class="r-title" id="r-title">정산 결과</div>
+        <div id="r-body"></div>
+      </div>
+      <button class="btn primary" id="copy-btn" style="justify-content:center">결과 복사하기</button>
+    </aside>
+  </div>
+
+  <p class="foot">합계는 1원 단위까지 영수증 총액과 맞춰 계산합니다</p>
+</div>
+
+<script>
+  "use strict";
+
+  /* ───────── 상태 ───────── */
+  const state = {
+    meta: { title: "", receiptTotal: null },
+    items: new Map(),
+    people: new Map(),
+    adjs: new Map(),
+  };
+  let db = null, userCap = null, sampleFn = null;
+  let me = null;               // { id, name, avatarUrl }
+  let profiles = {};
+  let profileKey = "";
+  let readOnly = false;
+  let shared = false;          // db 연결 여부
+  let loadedOnce = false;
+  let tab = "mine";
+  let scan = null;             // { status, previewUrl, parsed, error }
+
+  const won = new Intl.NumberFormat("ko-KR");
+  const fmt = n => won.format(Math.round(n)) + "원";
+  const num = (v, d = 0) => { const n = Number(String(v ?? "").replace(/[^\d.-]/g, "")); return Number.isFinite(n) ? n : d; };
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const el = id => document.getElementById(id);
+
+  /* ───────── 계산 ───────── */
+  function sorted(map) {
+    return [...map.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || String(a.id).localeCompare(String(b.id)));
+  }
+
+  function largestRemainder(exact, target) {
+    const floors = exact.map(v => Math.floor(v));
+    const out = floors.slice();
+    let rem = target - floors.reduce((a, b) => a + b, 0);
+    if (!exact.length) return out;
+    // 소수점 오차로 나머지 1원의 주인이 바뀌지 않도록, 사실상 같은 몫은 순서대로 받는다.
+    const order = exact
+      .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+      .sort((a, b) => (Math.abs(b.frac - a.frac) > 1e-6 ? b.frac - a.frac : a.i - b.i));
+    let k = 0;
+    while (rem > 0) { out[order[k % order.length].i] += 1; rem--; k++; }
+    while (rem < 0) { out[order[order.length - 1 - (k % order.length)].i] -= 1; rem++; k++; }
+    return out;
+  }
+
+  function compute() {
+    const items = sorted(state.items);
+    const people = sorted(state.people);
+    const adjs = sorted(state.adjs);
+
+    const lineTotal = new Map();
+    for (const it of items) lineTotal.set(it.id, Math.round(num(it.unitPrice) * num(it.qty, 1)));
+    const gross = items.reduce((s, it) => s + lineTotal.get(it.id), 0);
+
+    const pickers = new Map();
+    for (const it of items) pickers.set(it.id, people.filter(p => p.picks && p.picks[it.id]));
+
+    const sub = new Map(people.map(p => [p.id, 0]));
+    let orphanSub = 0;
+    for (const it of items) {
+      const tot = lineTotal.get(it.id);
+      const ps = pickers.get(it.id);
+      if (!ps.length) { orphanSub += tot; continue; }
+      const each = tot / ps.length;
+      for (const p of ps) sub.set(p.id, sub.get(p.id) + each);
+    }
+
+    let adjTotal = 0;
+    const adjLines = adjs.map(a => {
+      const raw = a.mode === "percent" ? gross * num(a.value) / 100 : num(a.value);
+      const amount = (a.kind === "extra" ? 1 : -1) * Math.abs(raw);
+      adjTotal += amount;
+      return { ...a, amount };
+    });
+
+    const grand = Math.round(gross + adjTotal);
+    const keys = [...people.map(p => p.id), "__orphan"];
+    const exact = keys.map(k => {
+      const s = k === "__orphan" ? orphanSub : sub.get(k);
+      return gross > 0 ? s + adjTotal * s / gross : 0;
+    });
+    const rounded = largestRemainder(exact, grand);
+    const finals = new Map(keys.map((k, i) => [k, rounded[i]]));
+
+    const printed = state.meta.receiptTotal;
+    return {
+      items, people, adjLines, lineTotal, pickers, sub,
+      gross, adjTotal, grand, orphanSub,
+      orphanFinal: finals.get("__orphan"),
+      finals,
+      diff: printed == null ? null : grand - printed,
+    };
+  }
+
+  /* ───────── 쓰기 ───────── */
+  const queues = new Map();
+  function enqueue(key, fn) {
+    const prev = queues.get(key) || Promise.resolve();
+    const next = prev.then(fn, fn).catch(onWriteError);
+    queues.set(key, next);
+    return next;
+  }
+  function onWriteError(e) {
+    const code = e && e.code;
+    if (code === "invalid_argument" && !readOnly) {
+      readOnly = true;
+      toast("이 정산을 바꿀 권한이 없어 읽기 전용으로 바꿨습니다.");
+      render();
+      return;
+    }
+    if (code === "quota_exceeded") toast("저장 공간이 꽉 찼습니다. 항목을 줄여 주세요.");
+    else if (code === "resource_exhausted") toast("조금 천천히 눌러 주세요.");
+    else if (code === "revoked") { shared = false; toast("공유 연결이 끊어졌습니다."); render(); }
+    else toast("저장하지 못했습니다. 다시 시도해 주세요.");
+  }
+
+  function put(coll, id, body) {
+    const clean = { ...body };
+    delete clean.id;
+    if (!db) { state[coll].set(id, { ...clean, id }); render(); return Promise.resolve(); }
+    return enqueue(coll + "/" + id, () => db.collection(coll).doc(id).set(clean));
+  }
+  function drop(coll, id) {
+    if (!db) { state[coll].delete(id); render(); return Promise.resolve(); }
+    return enqueue(coll + "/" + id, () => db.collection(coll).doc(id).delete());
+  }
+  function putMeta(patch) {
+    state.meta = { ...state.meta, ...patch };
+    const body = { title: state.meta.title || "", receiptTotal: state.meta.receiptTotal ?? null };
+    if (!db) { render(); return Promise.resolve(); }
+    return enqueue("meta", () => db.doc("meta/session").set(body));
+  }
+  const nextOrder = coll => 1 + [...state[coll].values()].reduce((m, d) => Math.max(m, num(d.order)), 0);
+
+  /* ───────── 액션 ───────── */
+  const addItem = (name, unitPrice, qty) => put("items", uid(), { name, unitPrice, qty, order: nextOrder("items") });
+  const addPerson = name => put("people", uid(), { name, order: nextOrder("people"), picks: {}, ownerId: null });
+
+  function togglePick(personId, itemId) {
+    const p = state.people.get(personId);
+    if (!p) return;
+    const picks = { ...(p.picks || {}) };
+    if (picks[itemId]) delete picks[itemId]; else picks[itemId] = 1;
+    put("people", personId, { ...p, picks });
+  }
+  function setAllPickers(itemId, on) {
+    for (const p of state.people.values()) {
+      const picks = { ...(p.picks || {}) };
+      if (on) picks[itemId] = 1; else delete picks[itemId];
+      put("people", p.id, { ...p, picks });
+    }
+  }
+  function claim(personId) {
+    if (!me || !me.id) { toast("로그인한 사람만 이름을 가져갈 수 있습니다."); return; }
+    for (const p of state.people.values()) {
+      if (p.ownerId === me.id && p.id !== personId) put("people", p.id, { ...p, ownerId: null });
+    }
+    const target = state.people.get(personId);
+    if (!target) return;
+    put("people", personId, { ...target, ownerId: target.ownerId === me.id ? null : me.id });
+    tab = "mine";
+  }
+  const myPerson = () => (me && me.id ? sorted(state.people).find(p => p.ownerId === me.id) || null : null);
+
+  async function resetAll() {
+    const jobs = [];
+    for (const c of ["items", "people", "adjs"]) for (const id of [...state[c].keys()]) jobs.push(drop(c, id));
+    jobs.push(putMeta({ receiptTotal: null }));
+    await Promise.all(jobs);
+    toast("초기화했습니다.");
+  }
+
+  /* ───────── 렌더 ───────── */
+  let raf = 0;
+  function render() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); }
+
+  function syncList(host, entries, create, update) {
+    const existing = new Map();
+    for (const node of Array.from(host.children)) existing.set(node.dataset.key, node);
+    const used = new Set();
+    entries.forEach((entry, idx) => {
+      let node = existing.get(entry.key);
+      if (!node) { node = create(entry); node.dataset.key = entry.key; }
+      update(node, entry, idx);
+      used.add(entry.key);
+      if (host.children[idx] !== node) host.insertBefore(node, host.children[idx] || null);
+    });
+    for (const [k, node] of existing) if (!used.has(k)) node.remove();
+  }
+  const setVal = (input, v) => { if (document.activeElement !== input) input.value = v; };
+  const h = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  function draw() {
+    const c = compute();
+    const mine = myPerson();
+
+    /* 헤더 */
+    setVal(el("title-input"), state.meta.title || "");
+    const sync = el("sync");
+    sync.dataset.state = shared ? (loadedOnce ? "live" : "wait") : (loadedOnce ? "local" : "wait");
+    el("sync-text").textContent = shared
+      ? (loadedOnce ? "실시간 공유 중" : "불러오는 중")
+      : (loadedOnce ? "이 브라우저에만 저장" : "연결 중");
+    if (me && me.id) {
+      el("who").hidden = false;
+      el("who-img").src = me.avatarUrl || "";
+      el("who-name").textContent = (me.name || "나") + (mine ? " · " + (mine.name || "이름 없음") : "");
+    }
+
+    /* 배너 */
+    const slot = el("banner-slot");
+    const msgs = [];
+    if (!shared && loadedOnce) msgs.push("공유 저장을 쓸 수 없어 이 브라우저에만 보관됩니다. 다른 사람에게는 보이지 않습니다.");
+    if (readOnly) msgs.push("읽기 전용입니다. 내용을 바꾸려면 편집 권한이 필요합니다.");
+    slot.innerHTML = "";
+    for (const m of msgs) slot.append(h("div", "banner", m));
+
+    /* 항목 */
+    drawScan();
+    el("items-count").textContent = c.items.length ? c.items.length + "개" : "";
+    el("items-empty").hidden = c.items.length > 0;
+    el("gross").textContent = fmt(c.gross);
+    syncList(el("items"), c.items.map(it => ({ key: it.id, it })), () => {
+      const row = h("div", "irow");
+      const name = h("input", "f name"); name.setAttribute("aria-label", "메뉴명");
+      const nums = h("div", "nums");
+      const price = h("input", "f num price"); price.inputMode = "numeric"; price.setAttribute("aria-label", "단가");
+      const qty = h("input", "f num qty"); qty.inputMode = "numeric"; qty.setAttribute("aria-label", "수량");
+      const line = h("div", "line");
+      const x = h("button", "xb", "✕"); x.title = "삭제"; x.setAttribute("aria-label", "항목 삭제");
+      nums.append(price, qty, line);
+      row.append(name, nums, x);
+      row._f = { name, price, qty, line, x };
+      return row;
+    }, (row, { it }) => {
+      const f = row._f;
+      setVal(f.name, it.name || "");
+      setVal(f.price, it.unitPrice ?? "");
+      setVal(f.qty, it.qty ?? "");
+      f.line.textContent = fmt(c.lineTotal.get(it.id));
+      row.classList.toggle("orphan", !c.pickers.get(it.id).length);
+      for (const k of ["name", "price", "qty"]) f[k].disabled = readOnly;
+      f.x.hidden = readOnly;
+      f.name.oninput = debounced(() => put("items", it.id, { ...state.items.get(it.id), name: f.name.value }), it.id + "n");
+      f.price.oninput = debounced(() => put("items", it.id, { ...state.items.get(it.id), unitPrice: num(f.price.value) }), it.id + "p");
+      f.qty.oninput = debounced(() => put("items", it.id, { ...state.items.get(it.id), qty: num(f.qty.value, 1) }), it.id + "q");
+      f.x.onclick = () => drop("items", it.id);
+    });
+
+    /* 참여자 */
+    el("people-count").textContent = c.people.length ? c.people.length + "명" : "";
+    const ownerIds = c.people.map(p => p.ownerId).filter(Boolean);
+    syncProfiles(ownerIds);
+    syncList(el("people"), c.people.map(p => ({ key: p.id, p })), () => {
+      const chip = h("div", "person");
+      const img = h("img"); img.alt = ""; img.hidden = true;
+      const name = h("input"); name.setAttribute("aria-label", "참여자 이름");
+      const tag = h("span", "tag");
+      const claimBtn = h("button", "claim");
+      const x = h("button", "xb", "✕"); x.setAttribute("aria-label", "참여자 삭제");
+      chip.append(img, name, tag, claimBtn, x);
+      chip._f = { img, name, tag, claimBtn, x };
+      return chip;
+    }, (chip, { p }) => {
+      const f = chip._f;
+      const isMine = !!(me && me.id && p.ownerId === me.id);
+      chip.classList.toggle("mine", isMine);
+      setVal(f.name, p.name || "");
+      f.name.disabled = readOnly;
+      f.name.style.width = Math.max(3, Math.min(10, (p.name || "").length + 1)) + "em";
+      const prof = p.ownerId ? profiles[p.ownerId] : null;
+      f.img.hidden = !prof;
+      if (prof) f.img.src = prof.avatarUrl || "";
+      f.tag.textContent = isMine ? "나" : (p.ownerId ? (prof && prof.name) || "다른 사람" : "");
+      f.claimBtn.hidden = readOnly || !me || !me.id || (!!p.ownerId && !isMine);
+      f.claimBtn.textContent = isMine ? "해제" : "내 이름";
+      f.claimBtn.onclick = () => claim(p.id);
+      f.x.hidden = readOnly;
+      f.name.oninput = debounced(() => put("people", p.id, { ...state.people.get(p.id), name: f.name.value }), p.id + "n");
+      f.x.onclick = () => drop("people", p.id);
+    });
+
+    /* 배분 */
+    el("tab-mine").setAttribute("aria-selected", String(tab === "mine"));
+    el("tab-all").setAttribute("aria-selected", String(tab === "all"));
+    el("view-mine").hidden = tab !== "mine";
+    el("view-all").hidden = tab !== "all";
+    if (tab === "mine") drawMine(c, mine); else drawMatrix(c);
+
+    /* 할인·추가금 */
+    el("adj-count").textContent = c.adjLines.length ? c.adjLines.length + "건" : "";
+    syncList(el("adjs"), c.adjLines.map(a => ({ key: a.id, a })), () => {
+      const row = h("div", "adj");
+      const label = h("input", "f label"); label.setAttribute("aria-label", "항목명");
+      const ctl = h("div", "ctl");
+      const kind = h("select", "f");
+      kind.append(optionEl("discount", "할인"), optionEl("extra", "추가금"));
+      kind.setAttribute("aria-label", "종류");
+      const mode = h("select", "f");
+      mode.append(optionEl("amount", "금액"), optionEl("percent", "％"));
+      mode.setAttribute("aria-label", "방식");
+      const value = h("input", "f num"); value.inputMode = "numeric"; value.setAttribute("aria-label", "값");
+      const amt = h("div", "amt");
+      const x = h("button", "xb", "✕"); x.setAttribute("aria-label", "삭제");
+      ctl.append(kind, mode, value, amt);
+      row.append(label, ctl, x);
+      row._f = { label, kind, mode, value, amt, x };
+      return row;
+    }, (row, { a }) => {
+      const f = row._f;
+      row.classList.toggle("discount", a.kind !== "extra");
+      row.classList.toggle("extra", a.kind === "extra");
+      setVal(f.label, a.label || "");
+      if (document.activeElement !== f.kind) f.kind.value = a.kind === "extra" ? "extra" : "discount";
+      if (document.activeElement !== f.mode) f.mode.value = a.mode === "percent" ? "percent" : "amount";
+      setVal(f.value, a.value ?? "");
+      f.amt.textContent = (a.amount < 0 ? "−" : "+") + fmt(Math.abs(a.amount));
+      for (const k of ["label", "kind", "mode", "value"]) f[k].disabled = readOnly;
+      f.x.hidden = readOnly;
+      const save = patch => put("adjs", a.id, { ...state.adjs.get(a.id), ...patch });
+      f.label.oninput = debounced(() => save({ label: f.label.value }), a.id + "l");
+      f.value.oninput = debounced(() => save({ value: num(f.value.value) }), a.id + "v");
+      f.kind.onchange = () => save({ kind: f.kind.value });
+      f.mode.onchange = () => save({ mode: f.mode.value });
+      f.x.onclick = () => drop("adjs", a.id);
+    });
+
+    /* 총액 확인 */
+    setVal(el("receipt-total"), state.meta.receiptTotal ?? "");
+    el("receipt-total").disabled = readOnly;
+    el("reset-btn").hidden = readOnly;
+    const flag = el("verify-flag");
+    if (c.diff == null) flag.hidden = true;
+    else {
+      flag.hidden = false;
+      flag.className = "flag " + (c.diff === 0 ? "ok" : "bad");
+      flag.textContent = c.diff === 0
+        ? "계산 총액과 일치합니다"
+        : (c.diff > 0 ? "계산이 " + fmt(c.diff) + " 많습니다" : "계산이 " + fmt(-c.diff) + " 적습니다");
+    }
+
+    drawReceipt(c, mine);
+  }
+
+  const optionEl = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; return o; };
+
+  const timers = new Map();
+  function debounced(fn, key) {
+    return () => {
+      clearTimeout(timers.get(key));
+      timers.set(key, setTimeout(fn, 420));
+    };
+  }
+
+  function drawMine(c, mine) {
+    const host = el("view-mine");
+    if (!me || !me.id) return void fill(host, "참여자 칸에서 내 이름을 눌러 두면, 여기서 내가 먹은 메뉴만 골라 담을 수 있습니다.");
+    if (!mine) return void fill(host, c.people.length ? "위 참여자 목록에서 내 이름을 눌러 주세요." : "먼저 참여자를 추가해 주세요.");
+    if (!c.items.length) return void fill(host, "먼저 영수증 항목을 추가해 주세요.");
+
+    let list = host.querySelector(".picks");
+    if (!list) { host.innerHTML = ""; list = h("div", "picks"); host.append(list); }
+    const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : null;
+
+    syncList(list, c.items.map(it => ({ key: it.id, it })), () => {
+      const b = h("button", "pick");
+      b.type = "button";
+      const box = h("span", "box", "✓");
+      const nm = h("span", "pname");
+      const meta = h("span", "meta");
+      const share = h("span", "share");
+      b.append(box, nm, meta, share);
+      b._f = { nm, meta, share };
+      return b;
+    }, (b, { it }) => {
+      const f = b._f;
+      const ps = c.pickers.get(it.id);
+      const on = !!(state.people.get(mine.id).picks || {})[it.id];
+      b.setAttribute("aria-pressed", String(on));
+      b.dataset.fk = "pick-" + it.id;
+      b.disabled = readOnly;
+      f.nm.textContent = it.name || "이름 없는 메뉴";
+      const tot = c.lineTotal.get(it.id);
+      f.meta.textContent = ps.length > 1 ? fmt(tot) + " ÷ " + ps.length + "명" : fmt(tot);
+      f.share.textContent = on ? fmt(tot / Math.max(1, ps.length)) : "—";
+      b.onclick = () => togglePick(mine.id, it.id);
+    });
+
+    if (focusKey) { const again = list.querySelector('[data-fk="' + focusKey + '"]'); if (again) again.focus(); }
+  }
+
+  function fill(host, msg) { host.innerHTML = ""; host.append(h("div", "empty", msg)); }
+
+  function drawMatrix(c) {
+    const host = el("view-all");
+    if (!c.items.length || !c.people.length) {
+      return void fill(host, !c.people.length ? "참여자를 추가하면 배분표가 나타납니다." : "영수증 항목을 추가해 주세요.");
+    }
+    const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : null;
+
+    const wrap = h("div", "mwrap");
+    const t = h("table", "mx");
+    const thead = h("thead");
+    const hr = h("tr");
+    hr.append(thHead("메뉴", true), thHead("전체"));
+    for (const p of c.people) hr.append(thHead(p.name || "—"));
+    thead.append(hr);
+
+    const tb = h("tbody");
+    for (const it of c.items) {
+      const ps = c.pickers.get(it.id);
+      const tr = h("tr");
+      tr.classList.toggle("orphan", !ps.length);
+      const rh = h("th", "rh");
+      rh.scope = "row";
+      rh.append(h("span", null, it.name || "이름 없는 메뉴"));
+      rh.title = (it.name || "") + " · " + fmt(c.lineTotal.get(it.id));
+      tr.append(rh);
+
+      const allCell = h("td", "all");
+      const allBtn = h("button", "btn ghost sm", ps.length === c.people.length ? "해제" : "모두");
+      allBtn.type = "button";
+      allBtn.dataset.fk = "all-" + it.id;
+      allBtn.disabled = readOnly;
+      allBtn.onclick = () => setAllPickers(it.id, ps.length !== c.people.length);
+      allCell.append(allBtn);
+      tr.append(allCell);
+
+      for (const p of c.people) {
+        const td = h("td");
+        const cell = h("button", "cell", "✓");
+        cell.type = "button";
+        const on = !!(p.picks || {})[it.id];
+        cell.setAttribute("aria-pressed", String(on));
+        cell.setAttribute("aria-label", (p.name || "참여자") + " · " + (it.name || "메뉴"));
+        cell.dataset.fk = "c-" + it.id + "-" + p.id;
+        cell.disabled = readOnly;
+        cell.onclick = () => togglePick(p.id, it.id);
+        td.append(cell);
+        tr.append(td);
+      }
+      tb.append(tr);
+    }
+
+    const tf = h("tfoot");
+    const fr = h("tr");
+    const fh = h("th", "rh", "담은 금액");
+    fh.scope = "row";
+    fr.append(fh, h("td", null, c.orphanSub > 0 ? "미배분 " + fmt(c.orphanSub) : ""));
+    for (const p of c.people) fr.append(h("td", null, fmt(c.sub.get(p.id))));
+    tf.append(fr);
+
+    t.append(thead, tb, tf);
+    wrap.append(t);
+    host.innerHTML = "";
+    host.append(wrap);
+
+    if (focusKey) { const again = host.querySelector('[data-fk="' + focusKey + '"]'); if (again) again.focus(); }
+  }
+
+  function thHead(text, rowHead) {
+    const n = h("th", rowHead ? "rh" : null, text);
+    n.scope = "col";
+    return n;
+  }
+
+  function drawReceipt(c, mine) {
+    el("r-title").textContent = state.meta.title ? state.meta.title : "정산 결과";
+    const body = el("r-body");
+    body.innerHTML = "";
+
+    if (!c.people.length) {
+      body.append(h("div", "r-empty", "참여자를 추가하면 1인당 금액이 여기에 인쇄됩니다."));
+      return;
+    }
+
+    const rows = h("div", "r-rows");
+    for (const p of c.people) {
+      const r = h("div", "r-row" + (mine && p.id === mine.id ? " me" : ""));
+      r.append(h("span", "nm", p.name || "이름 없음"), h("span", "lead"), h("span", "amt", fmt(c.finals.get(p.id))));
+      rows.append(r);
+    }
+    if (c.orphanSub > 0) {
+      const r = h("div", "r-row orphan");
+      r.append(h("span", "nm", "미배분"), h("span", "lead"), h("span", "amt", fmt(c.orphanFinal)));
+      rows.append(r);
+    }
+    body.append(rows);
+
+    body.append(h("div", "r-break"));
+    const sub = h("div", "r-sub");
+    sub.append(h("span", null, "항목 합계"), h("span", null, fmt(c.gross)));
+    body.append(sub);
+    for (const a of c.adjLines) {
+      const r = h("div", "r-sub");
+      r.append(h("span", null, (a.label || "조정") + (a.mode === "percent" ? " " + num(a.value) + "%" : "")),
+        h("span", null, (a.amount < 0 ? "−" : "+") + fmt(Math.abs(a.amount))));
+      body.append(r);
+    }
+
+    const total = h("div", "r-total");
+    total.append(h("span", "lbl", "결제 총액"), h("span", "val", fmt(c.grand)));
+    body.append(total);
+
+    const notes = [];
+    if (c.orphanSub > 0) notes.push("아무도 고르지 않은 메뉴가 " + fmt(c.orphanSub) + " 있습니다. 배분표에서 담아 주세요.");
+    if (c.diff != null && c.diff !== 0) notes.push("영수증에 적힌 금액과 " + fmt(Math.abs(c.diff)) + " 차이가 납니다.");
+    if (notes.length) body.append(h("div", "r-note warn", notes.join(" ")));
+    else body.append(h("div", "r-note", "1원 단위 나머지까지 나눠, 각자 금액의 합이 결제 총액과 정확히 같습니다."));
+  }
+
+  function resultText() {
+    const c = compute();
+    const lines = ["[" + (state.meta.title || "영수증 정산") + "]"];
+    for (const p of c.people) lines.push((p.name || "이름 없음") + " " + fmt(c.finals.get(p.id)));
+    if (c.orphanSub > 0) lines.push("미배분 " + fmt(c.orphanFinal));
+    lines.push("—");
+    for (const a of c.adjLines) lines.push((a.label || "조정") + " " + (a.amount < 0 ? "−" : "+") + fmt(Math.abs(a.amount)));
+    lines.push("총 " + fmt(c.grand));
+    return lines.join("\n");
+  }
+
+  /* ───────── 토스트 ───────── */
+  let toastTimer = 0, toastNode = null;
+  function toast(msg) {
+    if (toastNode) toastNode.remove();
+    toastNode = h("div", "toast", msg);
+    document.body.append(toastNode);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { if (toastNode) toastNode.remove(); toastNode = null; }, 3600);
+  }
+
+  /* ───────── 영수증 사진 인식 ───────── */
+  const SCAN_PROMPT = [
+    "이 이미지는 한국 음식점이나 가게의 영수증입니다. 인쇄된 주문 내역을 읽어 JSON으로만 답하세요.",
+    "",
+    "규칙:",
+    "- items: 주문한 메뉴 한 줄당 하나. name은 인쇄된 메뉴명 그대로 쓰세요.",
+    "- unitPrice: 1개당 가격(원, 정수). 단가가 없고 금액만 있으면 금액을 수량으로 나눈 값.",
+    "- qty: 수량(정수). 표기가 없으면 1.",
+    "- 소계, 합계, 과세물품가액, 부가세, 공급가액, 받은금액, 거스름돈 줄은 items에 넣지 마세요.",
+    "- adjustments: 할인·쿠폰·포인트사용은 kind \"discount\", 봉사료·배달팁 등 더해지는 금액은 kind \"extra\". value는 항상 양수.",
+    "- total: 영수증에 인쇄된 최종 결제 금액(정수). 읽을 수 없으면 null.",
+    "- 모든 숫자는 콤마와 단위 없이 정수로.",
+    "",
+    "형식 예시:",
+    '{"items":[{"name":"삼겹살","unitPrice":16000,"qty":2}],"adjustments":[{"label":"통신사 할인","kind":"discount","value":3000}],"total":29000}',
+  ].join("\n");
+
+  function drawScan() {
+    const host = el("scan-slot");
+    host.innerHTML = "";
+    if (!scan) return;
+    const box = h("div", "scan-box");
+    const sh = h("div", "sh");
+    const st = h("div", "st");
+    st.textContent = scan.status;
+    sh.append(st);
+    box.append(sh);
+
+    if (scan.previewUrl || scan.parsed) {
+      const prev = h("div", "scan-prev");
+      if (scan.previewUrl) { const img = h("img"); img.src = scan.previewUrl; img.alt = "인식한 영수증 사진"; prev.append(img); }
+      if (scan.parsed) {
+        const list = h("div", "scan-list");
+        for (const it of scan.parsed.items) {
+          const r = h("div", "sl");
+          r.append(h("span", null, it.name + (it.qty > 1 ? " ×" + it.qty : "")), h("span", null, fmt(it.unitPrice * it.qty)));
+          list.append(r);
+        }
+        for (const a of scan.parsed.adjustments) {
+          const r = h("div", "sl");
+          r.append(h("span", null, a.label), h("span", null, (a.kind === "extra" ? "+" : "−") + fmt(a.value)));
+          list.append(r);
+        }
+        if (scan.parsed.total != null) {
+          const r = h("div", "sl");
+          r.append(h("span", null, "영수증 결제 금액"), h("span", null, fmt(scan.parsed.total)));
+          list.append(r);
+        }
+        prev.append(list);
+      }
+      box.append(prev);
+    }
+
+    if (scan.parsed) {
+      const acts = h("div", "scan-acts");
+      const append = h("button", "btn primary sm", "항목에 추가");
+      append.onclick = () => commitScan(false);
+      const replace = h("button", "btn sm", "기존 항목 교체");
+      replace.onclick = () => commitScan(true);
+      const cancel = h("button", "btn ghost sm", "취소");
+      cancel.onclick = () => { closeScan(); render(); };
+      acts.append(append, replace, cancel);
+      box.append(acts);
+    } else if (scan.error) {
+      const acts = h("div", "scan-acts");
+      const retry = h("button", "btn sm", "다시 시도");
+      retry.onclick = () => { closeScan(); render(); el("scan-file").click(); };
+      const cancel = h("button", "btn ghost sm", "닫기");
+      cancel.onclick = () => { closeScan(); render(); };
+      acts.append(retry, cancel);
+      box.append(acts);
+    }
+    host.append(box);
+  }
+
+  function closeScan() {
+    if (scan && scan.previewUrl) URL.revokeObjectURL(scan.previewUrl);
+    scan = null;
+  }
+
+  async function runScan(file) {
+    closeScan();
+    scan = { status: "영수증을 읽고 있습니다… 10초쯤 걸립니다.", previewUrl: URL.createObjectURL(file), parsed: null, error: null };
+    render();
+    drawScan();
+    try {
+      const data = await sampleFn.json(SCAN_PROMPT, { images: [file], modelTier: "default" });
+      const items = (Array.isArray(data && data.items) ? data.items : [])
+        .map(r => ({ name: String((r && r.name) || "").trim(), unitPrice: Math.round(num(r && r.unitPrice)), qty: Math.max(1, Math.round(num(r && r.qty, 1))) }))
+        .filter(r => r.name && r.unitPrice >= 0);
+      const adjustments = (Array.isArray(data && data.adjustments) ? data.adjustments : [])
+        .map(r => ({ label: String((r && r.label) || "조정").trim(), kind: (r && r.kind) === "extra" ? "extra" : "discount", value: Math.abs(Math.round(num(r && r.value))) }))
+        .filter(r => r.value > 0);
+      const total = data && data.total != null && Number.isFinite(num(data.total)) ? Math.round(num(data.total)) : null;
+      if (!items.length) {
+        scan.error = true;
+        scan.status = "메뉴를 읽지 못했습니다. 영수증 전체가 밝고 반듯하게 보이는 사진으로 다시 찍어 주세요.";
+      } else {
+        scan.parsed = { items, adjustments, total };
+        scan.status = items.length + "개 메뉴를 읽었습니다. 금액을 확인하고 추가해 주세요.";
+      }
+    } catch (e) {
+      const code = e && e.code;
+      scan.error = true;
+      scan.status =
+        code === "not_granted" || code === "sampling_disabled" ? "Claude 사용을 허용하지 않아 사진 인식을 쓸 수 없습니다. 메뉴를 직접 입력해 주세요." :
+        code === "image_rejected" ? "이 사진은 읽을 수 없습니다. JPEG 또는 PNG로 20MB 이하 사진을 올려 주세요." :
+        code === "rate_limited" ? "요청이 많습니다. 잠시 뒤에 다시 시도해 주세요." :
+        code === "invalid_json" ? "결과를 해석하지 못했습니다. 다시 시도해 주세요." :
+        code === "cancelled" ? "인식을 멈췄습니다." :
+        "사진을 인식하지 못했습니다. 다시 시도해 주세요.";
+    }
+    render();
+    drawScan();
+  }
+
+  async function commitScan(replace) {
+    if (!scan || !scan.parsed) return;
+    const { items, adjustments, total } = scan.parsed;
+    const jobs = [];
+    if (replace) {
+      for (const id of [...state.items.keys()]) jobs.push(drop("items", id));
+      for (const id of [...state.adjs.keys()]) jobs.push(drop("adjs", id));
+      for (const p of state.people.values()) jobs.push(put("people", p.id, { ...p, picks: {} }));
+    }
+    let order = replace ? 1 : nextOrder("items");
+    for (const it of items) jobs.push(put("items", uid(), { name: it.name, unitPrice: it.unitPrice, qty: it.qty, order: order++ }));
+    let aorder = replace ? 1 : nextOrder("adjs");
+    for (const a of adjustments) jobs.push(put("adjs", uid(), { label: a.label, kind: a.kind, mode: "amount", value: a.value, order: aorder++ }));
+    if (total != null) jobs.push(putMeta({ receiptTotal: total }));
+    closeScan();
+    render();
+    await Promise.all(jobs);
+    toast(items.length + "개 항목을 담았습니다.");
+  }
+
+  /* ───────── 프로필 ───────── */
+  async function syncProfiles(ids) {
+    if (!userCap || !ids.length) return;
+    const key = [...new Set(ids)].sort().join(",");
+    if (key === profileKey) return;
+    profileKey = key;
+    const got = await userCap.profiles([...new Set(ids)]);
+    profiles = { ...profiles, ...got };
+    render();
+  }
+
+  /* ───────── 입력 연결 ───────── */
+  el("title-input").addEventListener("input", debounced(() => putMeta({ title: el("title-input").value }), "title"));
+  el("receipt-total").addEventListener("input", debounced(() => {
+    const raw = el("receipt-total").value.trim();
+    putMeta({ receiptTotal: raw === "" ? null : Math.round(num(raw)) });
+  }, "rt"));
+
+  el("add-item").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target;
+    const name = f.name.value.trim();
+    if (!name) return;
+    addItem(name, Math.round(num(f.price.value)), Math.max(1, Math.round(num(f.qty.value, 1))));
+    f.reset();
+    f.name.focus();
+  });
+  el("add-person").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target;
+    const name = f.name.value.trim();
+    if (!name) return;
+    addPerson(name);
+    f.reset();
+    f.name.focus();
+  });
+  el("add-adj").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target;
+    const label = f.label.value.trim();
+    if (!label) return;
+    put("adjs", uid(), { label, kind: f.kind.value, mode: f.mode.value, value: Math.abs(Math.round(num(f.value.value))), order: nextOrder("adjs") });
+    f.reset();
+    f.label.focus();
+  });
+
+  el("tab-mine").onclick = () => { tab = "mine"; render(); };
+  el("tab-all").onclick = () => { tab = "all"; render(); };
+
+  let resetArmed = false;
+  el("reset-btn").onclick = () => {
+    const b = el("reset-btn");
+    if (!resetArmed) {
+      resetArmed = true;
+      b.textContent = "정말 초기화할까요?";
+      setTimeout(() => { resetArmed = false; b.textContent = "전체 초기화"; }, 4000);
+      return;
+    }
+    resetArmed = false;
+    b.textContent = "전체 초기화";
+    resetAll();
+  };
+
+  el("copy-btn").onclick = async () => {
+    const text = resultText();
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("정산 결과를 복사했습니다.");
+    } catch {
+      toast("복사가 막혀 있습니다. 영수증 내용을 길게 눌러 선택해 주세요.");
+    }
+  };
+
+  el("scan-btn").onclick = () => el("scan-file").click();
+  el("scan-file").addEventListener("change", e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (file) runScan(file);
+  });
+
+  render();
+
+  /* ───────── 런타임 연결 ───────── */
+  (async () => {
+    const claude = window.claude;
+    if (!claude || typeof claude.use !== "function") { loadedOnce = true; render(); return; }
+
+    claude.use("user").then(async u => {
+      if (!u) return;
+      userCap = u;
+      me = await u.me();
+      const w = await u.can("data.write");
+      if (w === false) readOnly = true;
+      render();
+    }).catch(() => {});
+
+    claude.use("sample").then(async s => {
+      if (!s) return;
+      const limits = await s.limits().catch(() => null);
+      if (!limits || !limits.images) return;
+      sampleFn = s;
+      el("scan-btn").hidden = false;
+    }).catch(() => {});
+
+    const store = await claude.use("db").catch(() => null);
+    if (!store) { loadedOnce = true; shared = false; render(); return; }
+    db = store;
+    shared = true;
+
+    const slow = setTimeout(() => {
+      if (!loadedOnce) { el("sync-text").textContent = "불러오지 못했습니다"; toast("저장된 정산을 아직 불러오지 못했습니다. 잠시 기다려 주세요."); }
+    }, 10000);
+    const settle = () => { if (!loadedOnce) { loadedOnce = true; clearTimeout(slow); } render(); };
+
+    const collect = (coll, snap) => {
+      state[coll] = new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
+      settle();
+    };
+    const onErr = e => {
+      clearTimeout(slow);
+      loadedOnce = true;
+      if (e && e.code === "revoked") shared = false;
+      toast("공유 데이터를 읽는 중 문제가 생겼습니다. 새로 고침해 주세요.");
+      render();
+    };
+
+    db.doc("meta/session").onSnapshot(snap => {
+      const d = snap.exists ? snap.data() : {};
+      state.meta = { title: d.title || "", receiptTotal: d.receiptTotal == null ? null : num(d.receiptTotal) };
+      settle();
+    }, onErr);
+    db.collection("items").onSnapshot(s => collect("items", s), onErr);
+    db.collection("people").onSnapshot(s => collect("people", s), onErr);
+    db.collection("adjs").onSnapshot(s => collect("adjs", s), onErr);
+  })();
+</script>
