@@ -1,0 +1,116 @@
+# PR 과 main push 마다 돈다. 설치 단계가 없다 — npm 의존성이 0개인 저장소다.
+#
+# job id 와 job name 은 ASCII 로 둔다. 브랜치 보호의 "필수 상태 검사" 가 이 이름을
+# 글자까지 그대로 참조하므로, 한국어나 슬래시가 섞이면 이름을 고칠 때 보호 규칙이
+# 영원히 통과하지 않는 상태로 PR 이 막힌다. 사람이 읽는 설명은 step name 에 둔다.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # core.quotepath 가 기본값(true)이면 git 이 한국어 경로를 8진수 이스케이프로
+      # 출력해서(`"docs/\354\240\225..."`), 아래 grep 이 조용히 안 맞는다.
+      # 그러면 검사가 깨지는 게 아니라 **항상 통과**한다. 이쪽이 더 위험하다.
+      - name: UTF-8 로케일과 git 경로 출력 고정
+        run: |
+          echo "LANG=C.UTF-8"   >> "$GITHUB_ENV"
+          echo "LC_ALL=C.UTF-8" >> "$GITHUB_ENV"
+          git config core.quotepath false
+
+      # 한국어 파일명이 체크아웃에서 깨졌으면 여기서 먼저, 분명하게 실패한다.
+      # 아래 단계가 "파일 없음" 으로 애매하게 깨지는 걸 막는다.
+      - name: 한국어 경로 확인
+        run: |
+          set -euo pipefail
+          test -f "docs/정산-규칙.md" || {
+            echo "::error file=docs/정산-규칙.md::한국어 파일명이 깨졌습니다. macOS 라면 git config --global core.precomposeunicode true 를 확인하십시오."
+            exit 1
+          }
+          test -f src/index.html
+          test -f tests/split.test.mjs
+          test -f tools/build.mjs
+
+      # 조각 규약: 껍데기 태그 없음, <title> 있음, <script> 문법 오류 없음,
+      # 테마 분기가 :root 토큰 블록 밖으로 새지 않음.
+      - name: 조각 검사
+        run: node tools/build.mjs --check
+
+      - name: 금액 계산 테스트
+        run: node tests/split.test.mjs
+
+      # pages.yml 은 main 에서만 돌기 때문에, 공개 배포본이 깨진 건 PR 에서 잡아야 한다.
+      - name: 공개 배포본 생성 확인
+        run: |
+          set -euo pipefail
+          node tools/build.mjs
+          test -s dist/index.html
+          head -c 300 dist/index.html | grep -qi '<!doctype html>'
+          grep -qi '<meta charset="utf-8">' dist/index.html
+          grep -qi 'name="viewport"' dist/index.html
+          test -s dist/404.html
+
+  rules-doc:
+    name: rules-doc
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # 금액 계산을 고쳤는데 기준 문서를 안 고친 PR 을 막는다.
+      # 휴리스틱이다 — 단일 HTML 파일이라 "어느 파일이 바뀌었나" 로는 구분이 안 되므로
+      # 패치 내용의 키워드로 추측한다. 과하게 잡히면 rules-doc-exempt 라벨로 빠져나간다.
+      # 리뷰를 대체하는 장치가 아니라, 잊음을 줄이는 장치다. 라벨 남용은 리뷰에서 본다.
+      - name: docs/정산-규칙.md 가 함께 고쳐졌는지 확인
+        env:
+          BASE: ${{ github.base_ref }}
+          EXEMPT: ${{ contains(github.event.pull_request.labels.*.name, 'rules-doc-exempt') }}
+        run: |
+          set -euo pipefail
+          export LANG=C.UTF-8 LC_ALL=C.UTF-8
+          git config core.quotepath false
+          git fetch --no-tags origin "$BASE"
+          RANGE="origin/$BASE...HEAD"
+
+          MONEY=no
+          if git diff -U0 "$RANGE" -- src \
+             | grep -qE '^[+-][^+-].*(function[[:space:]]+(compute|largestRemainder|sorted)|largestRemainder\(|receiptTotal|perHead|Math\.(floor|round|ceil))'; then
+            MONEY=yes
+          fi
+
+          DOC=no
+          if git diff --name-only "$RANGE" | grep -qF 'docs/정산-규칙.md'; then DOC=yes; fi
+
+          echo "금액 로직 변경: $MONEY / 규칙 문서 변경: $DOC / 예외 라벨: $EXEMPT"
+
+          if [ "$MONEY" = yes ] && [ "$DOC" = no ] && [ "$EXEMPT" != true ]; then
+            echo "::error::금액 계산을 고쳤는데 docs/정산-규칙.md 가 그대로입니다. 규칙 문서를 먼저 고치고 그 문장을 PR 본문에 인용하십시오. 계산 결과가 바뀌지 않는 리팩터링이라면 rules-doc-exempt 라벨을 붙이십시오."
+            exit 1
+          fi
+
+          if [ "$DOC" = yes ] && ! git diff --name-only "$RANGE" | grep -qF 'tests/split.test.mjs'; then
+            echo "::warning file=tests/split.test.mjs::규칙 문서가 바뀌었는데 테스트가 그대로입니다. 바뀐 규칙을 고정하는 케이스를 추가했는지 확인하십시오."
+          fi
