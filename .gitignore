@@ -1,4 +1,11 @@
 node_modules/
+# tools/build.mjs 가 만드는 공개 배포본. CI 가 매번 새로 만든다.
+dist/
+
+# CDN 에서 받아 보는 라이브러리 번들. 벤더링하지 않는다 —
+# src/index.html 은 버전을 못 박은 동적 import() 로만 받는다.
+fs.js
+firebase*.js
 .env
 .env.local
 *.log
