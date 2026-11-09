@@ -13,6 +13,11 @@
     --accent: #1C6B5A;
     --accent-ink: #0E4538;
     --accent-soft: #DEEDE6;
+    /* 강조색 글자를 카드 바닥 위에 올릴 때. 테마마다 다른 농도가 맞아서 토큰으로 둔다.
+       이걸 쓰지 않고 규칙마다 테마 분기를 달면, 미디어 쿼리 밖의 :root:not([data-theme="light"]) 가
+       라이트 기본 상태에서도 매치돼 조용히 틀린 색이 나온다. */
+    --accent-text: #0E4538;
+    --on-accent: #FFFFFF;
     --warn: #96571F;
     --warn-soft: #F4E8D6;
     --alert: #A1352F;
@@ -35,6 +40,8 @@
       --accent: #65C3A9;
       --accent-ink: #A9E1D0;
       --accent-soft: #1C332B;
+      --accent-text: #65C3A9;
+      --on-accent: #131613;
       --warn: #D7A369;
       --warn-soft: #32271A;
       --alert: #E08A85;
@@ -54,6 +61,8 @@
     --accent: #65C3A9;
     --accent-ink: #A9E1D0;
     --accent-soft: #1C332B;
+    --accent-text: #65C3A9;
+    --on-accent: #131613;
     --warn: #D7A369;
     --warn-soft: #32271A;
     --alert: #E08A85;
@@ -93,12 +102,22 @@
     width: 100%; max-width: 440px; letter-spacing: -.01em;
   }
   #title-input::placeholder { color: var(--ink-3); }
-  .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
-  .who img { width: 26px; height: 26px; border-radius: 50%; display: block; }
+  .who {
+    font-size: 12.5px; font-weight: 600; color: var(--accent-text);
+    background: var(--accent-soft); border: 1px solid var(--rule-2);
+    border-radius: 999px; padding: 4px 11px; white-space: nowrap;
+  }
   .sync { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; color: var(--ink-2); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .sync[data-state="local"] .dot { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
   .sync[data-state="wait"] .dot { background: var(--ink-3); box-shadow: 0 0 0 3px var(--card-2); }
+  /* 방 코드는 전화로 불러 주는 값이다. 고정폭 + 자간을 주어 한 글자씩 읽히게 한다. */
+  .invite {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .08em; font-weight: 600;
+    color: var(--on-accent); background: var(--accent); border: 1px solid var(--accent);
+    border-radius: 999px; padding: 6px 13px; cursor: pointer; white-space: nowrap;
+  }
+  .invite:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
 
   /* ---- layout ---- */
   .deck { display: grid; grid-template-columns: minmax(0, 1fr) 342px; gap: 26px; align-items: start; margin-top: 26px; }
@@ -123,9 +142,7 @@
   }
   .btn:hover:not(:disabled) { background: var(--card-2); border-color: var(--ink-3); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  :root[data-theme="dark"] .btn.primary, :root:not([data-theme="light"]) .btn.primary { color: var(--paper); }
-  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .btn.primary { color: #fff; } }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
   .btn.primary:hover:not(:disabled) { background: var(--accent-ink); border-color: var(--accent-ink); }
   .btn.ghost { border-color: transparent; background: none; color: var(--ink-2); padding: 5px 8px; }
   .btn.ghost:hover:not(:disabled) { background: var(--card-2); color: var(--ink); }
@@ -195,9 +212,7 @@
   .person input {
     background: none; border: 0; width: 6.2em; min-width: 3em; font-weight: 500; padding: 0;
   }
-  .person .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--accent-ink); }
-  :root[data-theme="dark"] .person .tag, :root:not([data-theme="light"]) .person .tag { color: var(--accent); }
-  .person img { width: 20px; height: 20px; border-radius: 50%; display: block; }
+  .person .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--accent-text); }
   .claim { border: 0; background: none; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--ink-3); padding: 3px 5px; border-radius: 3px; }
   .claim:hover { color: var(--accent); background: var(--accent-soft); }
 
@@ -226,8 +241,7 @@
   .pick .pname { flex: 1; min-width: 0; font-weight: 500; }
   .pick .meta { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
   .pick .share { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; min-width: 5.6em; text-align: right; }
-  .pick[aria-pressed="true"] .share { color: var(--accent-ink); font-weight: 600; }
-  :root[data-theme="dark"] .pick[aria-pressed="true"] .share, :root:not([data-theme="light"]) .pick[aria-pressed="true"] .share { color: var(--accent); }
+  .pick[aria-pressed="true"] .share { color: var(--accent-text); font-weight: 600; }
 
   /* ---- matrix ---- */
   .mwrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
@@ -271,8 +285,7 @@
   .verify { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
   .verify .f.num { flex: 0 0 132px; }
   .flag { font-family: var(--mono); font-size: 12px; padding: 5px 9px; border-radius: 3px; font-variant-numeric: tabular-nums; }
-  .flag.ok { background: var(--accent-soft); color: var(--accent-ink); }
-  :root[data-theme="dark"] .flag.ok, :root:not([data-theme="light"]) .flag.ok { color: var(--accent); }
+  .flag.ok { background: var(--accent-soft); color: var(--accent-text); }
   .flag.bad { background: var(--alert-soft); color: var(--alert); }
 
   /* ---- receipt ---- */
@@ -293,9 +306,7 @@
   .r-row .nm { font-family: var(--sans); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 58%; }
   .r-row .lead { flex: 1; border-bottom: 1px dotted var(--rule-2); margin: 0 6px; transform: translateY(-4px); }
   .r-row .amt { font-weight: 500; }
-  .r-row.me .nm, .r-row.me .amt { color: var(--accent-ink); font-weight: 600; }
-  :root[data-theme="dark"] .r-row.me .nm, :root[data-theme="dark"] .r-row.me .amt,
-  :root:not([data-theme="light"]) .r-row.me .nm, :root:not([data-theme="light"]) .r-row.me .amt { color: var(--accent); }
+  .r-row.me .nm, .r-row.me .amt { color: var(--accent-text); font-weight: 600; }
   .r-row.orphan .nm, .r-row.orphan .amt { color: var(--warn); }
   .r-sub { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
   .r-break { border-top: 1px dashed var(--rule-2); margin: 14px 0; }
@@ -333,7 +344,8 @@
       <input id="title-input" aria-label="정산 이름" placeholder="영수증 정산기" maxlength="40">
     </div>
     <div class="sync" id="sync" data-state="wait"><span class="dot"></span><span id="sync-text">연결 중</span></div>
-    <div class="who" id="who" hidden><img id="who-img" alt=""><span id="who-name"></span></div>
+    <button class="invite" id="invite-btn" hidden></button>
+    <div class="who" id="who" hidden><span id="who-name"></span></div>
   </header>
 
   <div id="banner-slot"></div>
@@ -451,13 +463,18 @@
     items: new Map(),
     people: new Map(),
     adjs: new Map(),
+    /* 메뉴 선택 하나가 문서 하나다. id 는 personId + "~" + itemId.
+       사람 문서 안의 맵으로 두면 선택을 바꿀 때마다 문서 전체를 덮어써야 하고,
+       그러면 같은 사람 문서에 들어오는 다른 수정(이름 변경 등)을 지운다.
+       문서를 쪼개 두면 선택은 문서 하나를 만들거나 지우는 일이 되어 겹칠 데가 없다.
+       compute() 가 보는 p.picks 모양은 applyPicks() 가 읽기 경로에서 조립한다. */
+    picks: new Map(),
   };
-  let db = null, userCap = null, sampleFn = null;
-  let me = null;               // { id, name, avatarUrl }
-  let profiles = {};
-  let profileKey = "";
+  const COLLS = ["items", "people", "adjs", "picks"];
+  let sync = null;             // 동기화 어댑터 (아래 "동기화" 절)
+  let sampleFn = null;
   let readOnly = false;
-  let shared = false;          // db 연결 여부
+  let shared = false;          // 여러 사람과 같은 데이터를 보고 있는지
   let loadedOnce = false;
   let tab = "mine";
   let scan = null;             // { status, previewUrl, parsed, error }
@@ -467,6 +484,25 @@
   const num = (v, d = 0) => { const n = Number(String(v ?? "").replace(/[^\d.-]/g, "")); return Number.isFinite(n) ? n : d; };
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const el = id => document.getElementById(id);
+
+  const store = {
+    get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+    set(key, v) { try { localStorage.setItem(key, v); return true; } catch { return false; } },
+  };
+
+  /* ───────── 내가 누구인지 ─────────
+     계정을 만들지 않은 사람도 참여해야 하므로, 신원은 브라우저마다 한 번 만드는
+     무작위 ID 로 잡는다. 같은 브라우저로 다시 들어오면 집어 둔 내 이름을 그대로 들고 있다.
+     한계: 브라우저를 바꾸거나 시크릿 창으로 들어오면 다른 사람으로 보인다 —
+     그때는 참여자 칸에서 자기 이름을 다시 누르면 된다.
+     이 ID 는 이름을 집는 데만 쓰고 권한 판단에는 쓰지 않는다. 남의 ID 를 흉내낼 수 있지만,
+     같이 밥 먹은 사람끼리 쓰는 도구라 그걸 막는 것보다 아무나 바로 쓰는 게 중요하다. */
+  const myId = (() => {
+    const KEY = "receipt-split:device";
+    let v = store.get(KEY);
+    if (!v) { v = "d" + uid(); store.set(KEY, v); }
+    return v;
+  })();
 
   /* ───────── 계산 ───────── */
   function sorted(map) {
@@ -486,6 +522,20 @@
     while (rem > 0) { out[order[k % order.length].i] += 1; rem--; k++; }
     while (rem < 0) { out[order[order.length - 1 - (k % order.length)].i] -= 1; rem++; k++; }
     return out;
+  }
+
+  /** picks 컬렉션을 사람마다의 { itemId: 1 } 맵으로 조립해 사람 객체에 달아 준다.
+      compute() 와 테스트는 이 모양만 보므로, 저장 구조가 바뀌어도 계산 코드는 그대로다.
+      사라진 사람·메뉴를 가리키는 선택 문서는 그냥 무시된다. */
+  function applyPicks() {
+    const byPerson = new Map();
+    for (const d of state.picks.values()) {
+      if (!d || !d.personId || !d.itemId) continue;
+      let m = byPerson.get(d.personId);
+      if (!m) byPerson.set(d.personId, (m = {}));
+      m[d.itemId] = 1;
+    }
+    for (const [id, p] of state.people) p.picks = byPerson.get(id) || {};
   }
 
   function compute() {
@@ -537,6 +587,180 @@
     };
   }
 
+  /* ───────── 동기화 어댑터 ─────────
+     저장 방식이 여러 개다. Artifact 의 공유 저장소는 Claude 계정이 있어야 쓸 수 있어서
+     "아무나" 쓰게 하려면 다른 저장소가 필요하다. 그래서 저장 방식을 어댑터 뒤로 숨긴다.
+     새 저장 방식을 붙일 때 구현할 것은 이 네 개뿐이다.
+
+       write(coll, id, body)   문서 하나를 덮어쓴다
+       remove(coll, id)        문서 하나를 지운다
+       writeMeta(body)         meta/session 을 덮어쓴다
+       subscribe(sink)         변경을 흘려 준다 — sink.meta / sink.collection / sink.error
+
+     규칙 세 가지를 지켜야 한다.
+     1. items/people/adjs/picks 는 subscribe 의 sink 로만 채운다. write 가 state 를 직접 건드리면
+        어댑터에 따라 화면이 달라지고, 그 차이가 한쪽에서만 재현되는 버그가 된다.
+        meta 만 예외다 — putMeta 가 부분 수정이라 전체 문서를 만들려면 현재 값을 읽어야 한다.
+     2. write 는 **문서 전체를 덮어쓴다.** 어댑터는 부분 수정을 제공하지 않는다 —
+        필드 일부만 고칠 때는 patch() 를 쓴다. 이 네 메서드로 충분한 건 선택이 문서로
+        쪼개져 있기 때문이다(picks/{personId}~{itemId}). 선택을 사람 문서 안의 맵으로
+        되돌리면 백엔드마다 다른 병합 수단이 필요해지고, 그게 없는 백엔드에서는
+        동시 선택이 서로를 지운다. docs 와 README 에도 적어 둔 불변식이다.
+     3. 새 어댑터는 첫 스냅샷이 올 때까지 sink.collection 을 부르지 않는다.
+        빈 배열로 먼저 부르면 settle() 이 loadedOnce 를 세워 "빈 정산"이 확정돼 보인다. */
+
+  /** 이 브라우저에만 저장한다. 공유는 안 되지만 어디서나 동작하고 새로 고침에도 남는다. */
+  function localAdapter() {
+    const KEY = "receipt-split:local:v2";
+    const empty = () => ({ meta: {}, items: {}, people: {}, adjs: {}, picks: {} });
+    const read = () => { try { return { ...empty(), ...JSON.parse(store.get(KEY) || "{}") }; } catch { return empty(); } };
+    let sink = null;
+
+    const push = data => {
+      if (!sink) return;
+      sink.meta(data.meta || {});
+      for (const coll of COLLS) {
+        sink.collection(coll, Object.entries(data[coll] || {}).map(([id, d]) => ({ id, ...d })));
+      }
+    };
+    const commit = mutate => {
+      const data = read();
+      mutate(data);
+      if (!store.set(KEY, JSON.stringify(data))) {
+        // 시크릿 창 등에서 저장이 막힌 경우. 화면은 돌아가게 두고 보관만 포기한다.
+        push(data);
+        return Promise.reject(Object.assign(new Error("저장 불가"), { code: "storage_blocked" }));
+      }
+      push(data);
+      return Promise.resolve();
+    };
+
+    return {
+      kind: "local",
+      write: (coll, id, body) => commit(d => { d[coll][id] = body; }),
+      remove: (coll, id) => commit(d => { delete d[coll][id]; }),
+      writeMeta: body => commit(d => { d.meta = body; }),
+      subscribe(s) {
+        sink = s;
+        push(read());
+        // 같은 브라우저의 다른 탭에서 고친 것도 따라온다.
+        window.addEventListener("storage", e => { if (e.key === KEY) push(read()); });
+      },
+    };
+  }
+
+  /** Claude Artifact 의 공유 저장소. 쓰기에는 편집 권한이 필요하다. */
+  function artifactAdapter(d) {
+    return {
+      kind: "artifact",
+      write: (coll, id, body) => d.collection(coll).doc(id).set(body),
+      remove: (coll, id) => d.collection(coll).doc(id).delete(),
+      writeMeta: body => d.doc("meta/session").set(body),
+      subscribe(sink) {
+        const onErr = e => sink.error(e);
+        d.doc("meta/session").onSnapshot(s => sink.meta(s.exists ? s.data() : {}), onErr);
+        for (const coll of COLLS) {
+          d.collection(coll).onSnapshot(s => sink.collection(coll, s.docs.map(x => ({ id: x.id, ...x.data() }))), onErr);
+        }
+      },
+    };
+  }
+
+  /* ───────── 공개 배포본의 공유 저장소 (Firebase) ─────────
+     Artifact 의 db 는 계정 없는 사람에게 쓰기를 줄 수 없다 — 링크로 들어온 외부
+     방문자는 읽기(view)까지만 되고, 로그인하지 않은 사람은 아무 데이터도 못 본다.
+     "아무나 참여"를 하려면 정적 호스팅 + 계정 없는 백엔드가 필요하고, 그게 이 어댑터다.
+
+     왜 Firestore 인가 (후보 6개를 최종사용자·운영·구현 세 관점에서 비교한 결과):
+     - 익명 인증은 계정이 아니다. 로그인 화면도 팝업도 리다이렉트도 없이 uid 가 생긴다.
+       덕분에 보안 규칙이 request.auth != null 을 요구할 수 있어, "계정 없음"과
+       "아무나 DB 를 긁어가지 못함"을 동시에 얻는다. 다른 후보는 대개 하나를 포기한다.
+     - forceLongPolling 을 켜면 전송이 평범한 HTTPS 요청의 연속이 된다. 카카오톡
+       인앱 브라우저가 이 앱의 주 경로인데, WebSocket 하나에 목숨을 거는 후보는
+       소켓이 막히는 사람 한 명이 생기면 그 자리에서 할 수 있는 게 없다.
+     - 서버 코드 0, SQL 0, CLI 0, keepalive cron 0. 비활성 자동 정지가 없다.
+
+     ⚠ experimentalForceLongPolling 은 이 어댑터의 선택 사항이 아니다. 지우면
+       iOS 카톡에서 반영이 수십 초 밀리고, 사용자는 고장났다고 생각해 계속 다시 누른다. */
+  const FIREBASE = {
+    /* 콘솔 → 프로젝트 설정 → 내 앱 → SDK 설정에서 복사해 채운다.
+       비워 두면 이 브라우저에만 저장하는 모드로 떨어진다(공유 안 됨).
+       이 값들은 비밀이 아니다 — 공개 배포본에 그대로 실려야 정상이다.
+       접근 제어는 키가 아니라 보안 규칙이 한다. docs/배포.md 참고. */
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    appId: "",
+  };
+  const firebaseReady = () => !!(FIREBASE.apiKey && FIREBASE.projectId && FIREBASE.appId);
+
+  /* 방 코드 — 헷갈리는 글자(0·O·1·I·L)를 뺀 알파벳. 전화로 불러 줄 수 있어야 한다. */
+  const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const newRoomCode = () => {
+    const a = new Uint32Array(6);
+    (window.crypto || window.msCrypto).getRandomValues(a);
+    return [...a].map(n => CODE_CHARS[n % CODE_CHARS.length]).join("");
+  };
+  const prettyCode = c => c.slice(0, 3) + "-" + c.slice(3);
+  /** 주소의 #r= 에서 방 코드를 읽는다. 없으면 새로 만들어 주소에 적어 둔다.
+      주소를 바꿀 때 pushState 가 아니라 replaceState 다 — 뒤로 가기가 방을 되돌리면 안 된다. */
+  function roomCode() {
+    const m = /[#&?]r=([A-Za-z0-9-]{6,9})/.exec(location.hash + location.search);
+    const raw = m ? m[1].toUpperCase().replace(/-/g, "") : null;
+    const code = raw && raw.length === 6 && [...raw].every(ch => CODE_CHARS.includes(ch)) ? raw : newRoomCode();
+    if (!m || raw !== code) {
+      try { history.replaceState(null, "", location.pathname + location.search + "#r=" + prettyCode(code)); } catch { /* 파일에서 열면 막힌다 */ }
+    }
+    return code;
+  }
+
+  /** Firebase SDK 를 띄우고 익명 로그인까지 마친 어댑터를 돌려준다. 실패하면 null. */
+  async function firebaseAdapter(room) {
+    const V = "13.2.0";
+    const cdn = n => "https://www.gstatic.com/firebasejs/" + V + "/firebase-" + n + ".js";
+    /* 정적 import 가 아니라 동적 import() 인 이유 두 가지.
+       1. 이 파일은 한 덩어리 <script> 여야 한다. type="module" 이 되면
+          tools/build.mjs 의 조각 검사가 <script> 블록을 못 찾아 빌드가 깨진다.
+       2. Artifact 배포본은 이 함수를 아예 부르지 않아야 한다. Artifact 의 CSP 는
+          cdnjs / cdn.jsdelivr.net/npm / fonts.googleapis.com 만 허용하고 그 밖은
+          **에러 없이 조용히** 막는다 — gstatic 은 거기 없다. 정적 import 로 두면
+          Artifact 안에서 파일 전체가 로드되지 않는다. 그래서 부트스트랩이
+          window.claude 의 db 를 먼저 보고, 그게 있으면 여기까지 오지 않는다. */
+    const [app, auth, fs] = await Promise.all([import(cdn("app")), import(cdn("auth")), import(cdn("firestore"))]);
+    const a = app.initializeApp(FIREBASE);
+    // ⚠ 아래 플래그를 지우지 말 것. 위 주석에 이유가 있다.
+    const db = fs.initializeFirestore(a, { experimentalForceLongPolling: true });
+    await auth.signInAnonymously(auth.getAuth(a));
+
+    const base = ["rooms", room];
+    const ref = (coll, id) => fs.doc(db, ...base, coll, id);
+    const col = coll => fs.collection(db, ...base, coll);
+
+    return {
+      kind: "firebase",
+      room,
+      write: (coll, id, body) => fs.setDoc(ref(coll, id), body),
+      remove: (coll, id) => fs.deleteDoc(ref(coll, id)),
+      writeMeta: body => fs.setDoc(ref("meta", "session"), body),
+      subscribe(sink) {
+        const onErr = e => sink.error(normalizeFbError(e));
+        fs.onSnapshot(ref("meta", "session"), s => sink.meta(s.exists() ? s.data() : {}), onErr);
+        for (const coll of COLLS) {
+          fs.onSnapshot(col(coll), s => sink.collection(coll, s.docs.map(x => ({ id: x.id, ...x.data() }))), onErr);
+        }
+      },
+    };
+  }
+
+  /** Firebase 의 오류 코드를 앱이 이미 다루는 코드로 옮긴다. */
+  function normalizeFbError(e) {
+    const c = (e && e.code) || "";
+    if (c === "permission-denied") return Object.assign(e, { code: "not_granted" });
+    if (c === "resource-exhausted") return Object.assign(e, { code: "resource_exhausted" });
+    if (c === "unavailable" || c === "deadline-exceeded") return Object.assign(e, { code: "unavailable" });
+    return e;
+  }
+
   /* ───────── 쓰기 ───────── */
   const queues = new Map();
   function enqueue(key, fn) {
@@ -547,69 +771,100 @@
   }
   function onWriteError(e) {
     const code = e && e.code;
-    if (code === "invalid_argument" && !readOnly) {
+    // 네트워크가 끊긴 것은 실패가 아니다. Firestore 는 다시 붙을 때 보낸다.
+    if (code === "unavailable") return;
+    if ((code === "invalid_argument" || code === "not_granted") && !readOnly) {
       readOnly = true;
       toast("이 정산을 바꿀 권한이 없어 읽기 전용으로 바꿨습니다.");
       render();
       return;
     }
-    if (code === "quota_exceeded") toast("저장 공간이 꽉 찼습니다. 항목을 줄여 주세요.");
+    if (code === "storage_blocked") toast("이 브라우저가 저장을 막고 있어 새로 고치면 사라집니다.");
+    else if (code === "quota_exceeded") toast("저장 공간이 꽉 찼습니다. 항목을 줄여 주세요.");
     else if (code === "resource_exhausted") toast("조금 천천히 눌러 주세요.");
     else if (code === "revoked") { shared = false; toast("공유 연결이 끊어졌습니다."); render(); }
     else toast("저장하지 못했습니다. 다시 시도해 주세요.");
   }
 
+  /* 어댑터가 정해지기 전에 누른 것도 잃지 않도록 잠시 쥐고 있는다. */
+  const pending = [];
+  function viaSync(key, fn) {
+    if (sync) return enqueue(key, () => fn(sync));
+    return new Promise(res => pending.push(() => res(enqueue(key, () => fn(sync)))));
+  }
+  function flushPending() { while (pending.length) pending.shift()(); }
+
   function put(coll, id, body) {
     const clean = { ...body };
     delete clean.id;
-    if (!db) { state[coll].set(id, { ...clean, id }); render(); return Promise.resolve(); }
-    return enqueue(coll + "/" + id, () => db.collection(coll).doc(id).set(clean));
+    return viaSync(coll + "/" + id, s => s.write(coll, id, clean));
   }
   function drop(coll, id) {
-    if (!db) { state[coll].delete(id); render(); return Promise.resolve(); }
-    return enqueue(coll + "/" + id, () => db.collection(coll).doc(id).delete());
+    return viaSync(coll + "/" + id, s => s.remove(coll, id));
   }
-  function putMeta(patch) {
-    state.meta = { ...state.meta, ...patch };
+  /** 일부 필드만 고친다. 본문은 **큐가 실행되는 순간**의 state 로 만든다.
+      호출 시점에 본문을 미리 만들어 두면, 기다리는 동안 들어온 남의 수정을 덮어쓴다. */
+  function patch(coll, id, fields) {
+    return viaSync(coll + "/" + id, s => {
+      const cur = state[coll].get(id);
+      if (!cur) return Promise.resolve();
+      const body = { ...cur, ...fields };
+      delete body.id;
+      delete body.picks;   // 사람 문서의 picks 는 파생값이라 저장하지 않는다
+      return s.write(coll, id, body);
+    });
+  }
+  function putMeta(fields) {
+    state.meta = { ...state.meta, ...fields };
     const body = { title: state.meta.title || "", receiptTotal: state.meta.receiptTotal ?? null };
-    if (!db) { render(); return Promise.resolve(); }
-    return enqueue("meta", () => db.doc("meta/session").set(body));
+    return viaSync("meta", s => s.writeMeta(body));
   }
   const nextOrder = coll => 1 + [...state[coll].values()].reduce((m, d) => Math.max(m, num(d.order)), 0);
 
   /* ───────── 액션 ───────── */
   const addItem = (name, unitPrice, qty) => put("items", uid(), { name, unitPrice, qty, order: nextOrder("items") });
-  const addPerson = name => put("people", uid(), { name, order: nextOrder("people"), picks: {}, ownerId: null });
+  const addPerson = name => put("people", uid(), { name, order: nextOrder("people"), claimedBy: null });
 
+  const pickId = (personId, itemId) => personId + "~" + itemId;
+
+  /** 선택 문서 하나를 만들거나 지운다. 읽고-고쳐-쓰기가 없으니 겹칠 데가 없다. */
+  function setPick(personId, itemId, on) {
+    const key = pickId(personId, itemId);
+    if (on) return put("picks", key, { personId, itemId });
+    return drop("picks", key);
+  }
   function togglePick(personId, itemId) {
-    const p = state.people.get(personId);
-    if (!p) return;
-    const picks = { ...(p.picks || {}) };
-    if (picks[itemId]) delete picks[itemId]; else picks[itemId] = 1;
-    put("people", personId, { ...p, picks });
+    setPick(personId, itemId, !state.picks.has(pickId(personId, itemId)));
   }
   function setAllPickers(itemId, on) {
-    for (const p of state.people.values()) {
-      const picks = { ...(p.picks || {}) };
-      if (on) picks[itemId] = 1; else delete picks[itemId];
-      put("people", p.id, { ...p, picks });
-    }
+    for (const p of state.people.values()) setPick(p.id, itemId, on);
   }
+
+  /** 참여자 한 명을 "나"로 집는다. 누르면 그 사람 메뉴만 골라 담는 화면이 열린다. */
   function claim(personId) {
-    if (!me || !me.id) { toast("로그인한 사람만 이름을 가져갈 수 있습니다."); return; }
-    for (const p of state.people.values()) {
-      if (p.ownerId === me.id && p.id !== personId) put("people", p.id, { ...p, ownerId: null });
-    }
     const target = state.people.get(personId);
     if (!target) return;
-    put("people", personId, { ...target, ownerId: target.ownerId === me.id ? null : me.id });
-    tab = "mine";
+    const release = target.claimedBy === myId;
+    // 한 브라우저가 두 사람을 동시에 쥐지 않게 먼저 놓는다.
+    for (const p of state.people.values()) {
+      if (p.claimedBy === myId && p.id !== personId) patch("people", p.id, { claimedBy: null });
+    }
+    patch("people", personId, { claimedBy: release ? null : myId });
+    if (!release) tab = "mine";
   }
-  const myPerson = () => (me && me.id ? sorted(state.people).find(p => p.ownerId === me.id) || null : null);
+  const myPerson = () => sorted(state.people).find(p => p.claimedBy === myId) || null;
+
+  /** 사람이나 메뉴를 지울 때 그걸 가리키는 선택 문서도 같이 지운다. */
+  function dropWithPicks(coll, id) {
+    const field = coll === "people" ? "personId" : "itemId";
+    const jobs = [drop(coll, id)];
+    for (const [key, d] of state.picks) if (d[field] === id) jobs.push(drop("picks", key));
+    return Promise.all(jobs);
+  }
 
   async function resetAll() {
     const jobs = [];
-    for (const c of ["items", "people", "adjs"]) for (const id of [...state[c].keys()]) jobs.push(drop(c, id));
+    for (const c of COLLS) for (const id of [...state[c].keys()]) jobs.push(drop(c, id));
     jobs.push(putMeta({ receiptTotal: null }));
     await Promise.all(jobs);
     toast("초기화했습니다.");
@@ -641,21 +896,27 @@
 
     /* 헤더 */
     setVal(el("title-input"), state.meta.title || "");
-    const sync = el("sync");
-    sync.dataset.state = shared ? (loadedOnce ? "live" : "wait") : (loadedOnce ? "local" : "wait");
+    const syncEl = el("sync");
+    syncEl.dataset.state = shared ? (loadedOnce ? "live" : "wait") : (loadedOnce ? "local" : "wait");
     el("sync-text").textContent = shared
       ? (loadedOnce ? "실시간 공유 중" : "불러오는 중")
       : (loadedOnce ? "이 브라우저에만 저장" : "연결 중");
-    if (me && me.id) {
-      el("who").hidden = false;
-      el("who-img").src = me.avatarUrl || "";
-      el("who-name").textContent = (me.name || "나") + (mine ? " · " + (mine.name || "이름 없음") : "");
+    el("who").hidden = !mine;
+    if (mine) el("who-name").textContent = "나 · " + (mine.name || "이름 없음");
+
+    /* 초대 — 방 코드가 있는 어댑터에서만 보인다. 누르면 링크를 복사한다. */
+    const inv = el("invite-btn");
+    const room = sync && sync.room;
+    inv.hidden = !room;
+    if (room) {
+      inv.textContent = "초대 " + prettyCode(room);
+      inv.title = "같이 정산할 사람에게 보낼 링크를 복사합니다";
     }
 
     /* 배너 */
     const slot = el("banner-slot");
     const msgs = [];
-    if (!shared && loadedOnce) msgs.push("공유 저장을 쓸 수 없어 이 브라우저에만 보관됩니다. 다른 사람에게는 보이지 않습니다.");
+    if (!shared && loadedOnce) msgs.push("이 브라우저에만 저장됩니다. 다른 사람에게는 보이지 않습니다.");
     if (readOnly) msgs.push("읽기 전용입니다. 내용을 바꾸려면 편집 권한이 필요합니다.");
     slot.innerHTML = "";
     for (const m of msgs) slot.append(h("div", "banner", m));
@@ -686,43 +947,39 @@
       row.classList.toggle("orphan", !c.pickers.get(it.id).length);
       for (const k of ["name", "price", "qty"]) f[k].disabled = readOnly;
       f.x.hidden = readOnly;
-      f.name.oninput = debounced(() => put("items", it.id, { ...state.items.get(it.id), name: f.name.value }), it.id + "n");
-      f.price.oninput = debounced(() => put("items", it.id, { ...state.items.get(it.id), unitPrice: num(f.price.value) }), it.id + "p");
-      f.qty.oninput = debounced(() => put("items", it.id, { ...state.items.get(it.id), qty: num(f.qty.value, 1) }), it.id + "q");
-      f.x.onclick = () => drop("items", it.id);
+      f.name.oninput = debounced(() => patch("items", it.id, { name: f.name.value }), it.id + "n");
+      f.price.oninput = debounced(() => patch("items", it.id, { unitPrice: num(f.price.value) }), it.id + "p");
+      f.qty.oninput = debounced(() => patch("items", it.id, { qty: num(f.qty.value, 1) }), it.id + "q");
+      f.x.onclick = () => dropWithPicks("items", it.id);
     });
 
     /* 참여자 */
     el("people-count").textContent = c.people.length ? c.people.length + "명" : "";
-    const ownerIds = c.people.map(p => p.ownerId).filter(Boolean);
-    syncProfiles(ownerIds);
     syncList(el("people"), c.people.map(p => ({ key: p.id, p })), () => {
       const chip = h("div", "person");
-      const img = h("img"); img.alt = ""; img.hidden = true;
       const name = h("input"); name.setAttribute("aria-label", "참여자 이름");
       const tag = h("span", "tag");
       const claimBtn = h("button", "claim");
       const x = h("button", "xb", "✕"); x.setAttribute("aria-label", "참여자 삭제");
-      chip.append(img, name, tag, claimBtn, x);
-      chip._f = { img, name, tag, claimBtn, x };
+      chip.append(name, tag, claimBtn, x);
+      chip._f = { name, tag, claimBtn, x };
       return chip;
     }, (chip, { p }) => {
       const f = chip._f;
-      const isMine = !!(me && me.id && p.ownerId === me.id);
+      const isMine = p.claimedBy === myId;
+      const taken = !!p.claimedBy && !isMine;
       chip.classList.toggle("mine", isMine);
       setVal(f.name, p.name || "");
       f.name.disabled = readOnly;
       f.name.style.width = Math.max(3, Math.min(10, (p.name || "").length + 1)) + "em";
-      const prof = p.ownerId ? profiles[p.ownerId] : null;
-      f.img.hidden = !prof;
-      if (prof) f.img.src = prof.avatarUrl || "";
-      f.tag.textContent = isMine ? "나" : (p.ownerId ? (prof && prof.name) || "다른 사람" : "");
-      f.claimBtn.hidden = readOnly || !me || !me.id || (!!p.ownerId && !isMine);
-      f.claimBtn.textContent = isMine ? "해제" : "내 이름";
+      f.tag.textContent = isMine ? "나" : (taken ? "선택 중" : "");
+      // 남이 집어 둔 이름도 누를 수 있다. 기기를 바꿨거나 잘못 집은 경우를 막으면 안 된다.
+      f.claimBtn.hidden = readOnly;
+      f.claimBtn.textContent = isMine ? "해제" : (taken ? "내가 쓰기" : "내 이름");
       f.claimBtn.onclick = () => claim(p.id);
       f.x.hidden = readOnly;
-      f.name.oninput = debounced(() => put("people", p.id, { ...state.people.get(p.id), name: f.name.value }), p.id + "n");
-      f.x.onclick = () => drop("people", p.id);
+      f.name.oninput = debounced(() => patch("people", p.id, { name: f.name.value }), p.id + "n");
+      f.x.onclick = () => dropWithPicks("people", p.id);
     });
 
     /* 배분 */
@@ -762,7 +1019,7 @@
       f.amt.textContent = (a.amount < 0 ? "−" : "+") + fmt(Math.abs(a.amount));
       for (const k of ["label", "kind", "mode", "value"]) f[k].disabled = readOnly;
       f.x.hidden = readOnly;
-      const save = patch => put("adjs", a.id, { ...state.adjs.get(a.id), ...patch });
+      const save = fields => patch("adjs", a.id, fields);
       f.label.oninput = debounced(() => save({ label: f.label.value }), a.id + "l");
       f.value.oninput = debounced(() => save({ value: num(f.value.value) }), a.id + "v");
       f.kind.onchange = () => save({ kind: f.kind.value });
@@ -799,8 +1056,9 @@
 
   function drawMine(c, mine) {
     const host = el("view-mine");
-    if (!me || !me.id) return void fill(host, "참여자 칸에서 내 이름을 눌러 두면, 여기서 내가 먹은 메뉴만 골라 담을 수 있습니다.");
-    if (!mine) return void fill(host, c.people.length ? "위 참여자 목록에서 내 이름을 눌러 주세요." : "먼저 참여자를 추가해 주세요.");
+    if (!mine) return void fill(host, c.people.length
+      ? "위 참여자 목록에서 내 이름의 ‘내 이름’ 버튼을 눌러 주세요."
+      : "먼저 참여자를 추가해 주세요. 이름을 적고 ‘내 이름’을 누르면 여기서 내가 먹은 메뉴만 골라 담습니다.");
     if (!c.items.length) return void fill(host, "먼저 영수증 항목을 추가해 주세요.");
 
     let list = host.querySelector(".picks");
@@ -820,7 +1078,7 @@
     }, (b, { it }) => {
       const f = b._f;
       const ps = c.pickers.get(it.id);
-      const on = !!(state.people.get(mine.id).picks || {})[it.id];
+      const on = state.picks.has(pickId(mine.id, it.id));
       b.setAttribute("aria-pressed", String(on));
       b.dataset.fk = "pick-" + it.id;
       b.disabled = readOnly;
@@ -875,7 +1133,7 @@
         const td = h("td");
         const cell = h("button", "cell", "✓");
         cell.type = "button";
-        const on = !!(p.picks || {})[it.id];
+        const on = state.picks.has(pickId(p.id, it.id));
         cell.setAttribute("aria-pressed", String(on));
         cell.setAttribute("aria-label", (p.name || "참여자") + " · " + (it.name || "메뉴"));
         cell.dataset.fk = "c-" + it.id + "-" + p.id;
@@ -1098,7 +1356,8 @@
     if (replace) {
       for (const id of [...state.items.keys()]) jobs.push(drop("items", id));
       for (const id of [...state.adjs.keys()]) jobs.push(drop("adjs", id));
-      for (const p of state.people.values()) jobs.push(put("people", p.id, { ...p, picks: {} }));
+      // 항목이 모두 사라지므로 그걸 가리키던 선택도 같이 지운다. 참여자는 남긴다.
+      for (const key of [...state.picks.keys()]) jobs.push(drop("picks", key));
     }
     let order = replace ? 1 : nextOrder("items");
     for (const it of items) jobs.push(put("items", uid(), { name: it.name, unitPrice: it.unitPrice, qty: it.qty, order: order++ }));
@@ -1109,17 +1368,6 @@
     render();
     await Promise.all(jobs);
     toast(items.length + "개 항목을 담았습니다.");
-  }
-
-  /* ───────── 프로필 ───────── */
-  async function syncProfiles(ids) {
-    if (!userCap || !ids.length) return;
-    const key = [...new Set(ids)].sort().join(",");
-    if (key === profileKey) return;
-    profileKey = key;
-    const got = await userCap.profiles([...new Set(ids)]);
-    profiles = { ...profiles, ...got };
-    render();
   }
 
   /* ───────── 입력 연결 ───────── */
@@ -1184,6 +1432,20 @@
     }
   };
 
+  /* 초대 링크 복사. 카톡에 붙이는 게 기본 경로라 안내 문장까지 같이 담는다.
+     복사가 막힌 브라우저(인앱 웹뷰에 더러 있다)에서는 코드를 불러 줄 수 있게 토스트로 보여 준다. */
+  el("invite-btn").onclick = async () => {
+    const room = sync && sync.room;
+    if (!room) return;
+    const link = location.origin + location.pathname + "#r=" + prettyCode(room);
+    try {
+      await navigator.clipboard.writeText("영수증 정산 같이 해요 — 먹은 메뉴만 골라 주세요\n" + link);
+      toast("초대 링크를 복사했습니다. 카톡에 붙여 넣어 주세요.");
+    } catch {
+      toast("복사가 막혀 있습니다. 방 코드 " + prettyCode(room) + " 를 알려 주세요.");
+    }
+  };
+
   el("scan-btn").onclick = () => el("scan-file").click();
   el("scan-file").addEventListener("change", e => {
     const file = e.target.files && e.target.files[0];
@@ -1193,57 +1455,74 @@
 
   render();
 
-  /* ───────── 런타임 연결 ───────── */
-  (async () => {
-    const claude = window.claude;
-    if (!claude || typeof claude.use !== "function") { loadedOnce = true; render(); return; }
-
-    claude.use("user").then(async u => {
-      if (!u) return;
-      userCap = u;
-      me = await u.me();
-      const w = await u.can("data.write");
-      if (w === false) readOnly = true;
-      render();
-    }).catch(() => {});
-
-    claude.use("sample").then(async s => {
-      if (!s) return;
-      const limits = await s.limits().catch(() => null);
-      if (!limits || !limits.images) return;
-      sampleFn = s;
-      el("scan-btn").hidden = false;
-    }).catch(() => {});
-
-    const store = await claude.use("db").catch(() => null);
-    if (!store) { loadedOnce = true; shared = false; render(); return; }
-    db = store;
-    shared = true;
+  /* ───────── 런타임 연결 ─────────
+     어댑터를 하나 고르고, 그 어댑터가 흘려 주는 변경으로 state 를 채운다.
+     어느 어댑터든 sink 모양은 같으므로 아래 코드는 저장 방식을 몰라도 된다. */
+  function connect(adapter) {
+    sync = adapter;
+    shared = adapter.kind !== "local";
 
     const slow = setTimeout(() => {
       if (!loadedOnce) { el("sync-text").textContent = "불러오지 못했습니다"; toast("저장된 정산을 아직 불러오지 못했습니다. 잠시 기다려 주세요."); }
     }, 10000);
     const settle = () => { if (!loadedOnce) { loadedOnce = true; clearTimeout(slow); } render(); };
 
-    const collect = (coll, snap) => {
-      state[coll] = new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
-      settle();
-    };
-    const onErr = e => {
-      clearTimeout(slow);
-      loadedOnce = true;
-      if (e && e.code === "revoked") shared = false;
-      toast("공유 데이터를 읽는 중 문제가 생겼습니다. 새로 고침해 주세요.");
-      render();
-    };
+    adapter.subscribe({
+      meta(d) {
+        state.meta = { title: (d && d.title) || "", receiptTotal: d && d.receiptTotal != null ? num(d.receiptTotal) : null };
+        settle();
+      },
+      collection(coll, docs) {
+        state[coll] = new Map(docs.map(d => [d.id, d]));
+        if (coll === "people" || coll === "picks") applyPicks();
+        settle();
+      },
+      error(e) {
+        clearTimeout(slow);
+        loadedOnce = true;
+        if (e && e.code === "revoked") shared = false;
+        toast("공유 데이터를 읽는 중 문제가 생겼습니다. 새로 고침해 주세요.");
+        render();
+      },
+    });
 
-    db.doc("meta/session").onSnapshot(snap => {
-      const d = snap.exists ? snap.data() : {};
-      state.meta = { title: d.title || "", receiptTotal: d.receiptTotal == null ? null : num(d.receiptTotal) };
-      settle();
-    }, onErr);
-    db.collection("items").onSnapshot(s => collect("items", s), onErr);
-    db.collection("people").onSnapshot(s => collect("people", s), onErr);
-    db.collection("adjs").onSnapshot(s => collect("adjs", s), onErr);
+    flushPending();
+    render();
+  }
+
+  /* 세 가지 배포 형태가 한 파일에서 나온다. 순서대로 되는 것을 고른다.
+       1. Artifact      — window.claude 의 db. 개발자가 쓰는 작업용 배포본.
+       2. 공개 배포본    — Firebase. 계정 없이 아무나 링크로 참여한다.
+       3. 그 외         — 이 브라우저에만 저장. 파일을 직접 열었거나 설정이 비었을 때.
+     Artifact 를 먼저 보는 이유는 거기서는 Firebase SDK 를 받을 필요가 없기 때문이다. */
+  (async () => {
+    const claude = window.claude;
+
+    if (claude && typeof claude.use === "function") {
+      claude.use("sample").then(async s => {
+        if (!s) return;
+        const limits = await s.limits().catch(() => null);
+        if (!limits || !limits.images) return;
+        sampleFn = s;
+        el("scan-btn").hidden = false;
+      }).catch(() => {});
+
+      const d = await claude.use("db").catch(() => null);
+      if (d) return void connect(artifactAdapter(d));
+    }
+
+    if (firebaseReady()) {
+      const code = roomCode();
+      try {
+        connect(await firebaseAdapter(code));
+        return;
+      } catch (e) {
+        // SDK 를 못 받았거나(차단된 망) 익명 로그인이 꺼져 있다. 화면은 살려 둔다.
+        console.error("firebase 연결 실패", e);
+        toast("공유 서버에 연결하지 못해 이 브라우저에만 저장합니다.");
+      }
+    }
+
+    connect(localAdapter());
   })();
 </script>
