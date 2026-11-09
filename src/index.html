@@ -509,6 +509,7 @@
     return [...map.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || String(a.id).localeCompare(String(b.id)));
   }
 
+  /* CI 검증용 한 줄 — Math.round() */
   function largestRemainder(exact, target) {
     const floors = exact.map(v => Math.floor(v));
     const out = floors.slice();
