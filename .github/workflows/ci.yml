@@ -134,7 +134,9 @@ jobs:
           DOC=no
           if grep -qF 'docs/정산-규칙.md' <<< "$NAMES"; then DOC=yes; fi
 
-          echo "금액 로직 변경: $MONEY / 규칙 문서 변경: $DOC / 예외 라벨: $EXEMPT"
+          # 읽은 라벨 개수도 찍는다. 0 개면 "예외 라벨 없음" 과 "API 읽기 실패" 를
+          # 구분할 수 없는데, 후자면 탈출구가 다시 조용히 닫힌 상태다.
+          echo "금액 로직 변경: $MONEY / 규칙 문서 변경: $DOC / 예외 라벨: $EXEMPT (라벨 $(grep -c . <<< "$LABELS" || true)개 읽음)"
 
           if [ "$MONEY" = yes ] && [ "$DOC" = no ] && [ "$EXEMPT" != yes ]; then
             echo "::error::금액 계산을 고쳤는데 docs/정산-규칙.md 가 그대로입니다. 규칙 문서를 먼저 고치고 그 문장을 PR 본문에 인용하십시오. 계산 결과가 바뀌지 않는 리팩터링이라면 rules-doc-exempt 라벨을 붙이십시오."
