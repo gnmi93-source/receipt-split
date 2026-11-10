@@ -8,6 +8,10 @@ name: CI
 on:
   pull_request:
     branches: [main]
+    # labeled/unlabeled 를 반드시 넣어야 한다. 기본 활성 종류는 opened·synchronize·reopened
+    # 뿐이라서, rules-doc-exempt 라벨을 붙여도 **아무 것도 다시 돌지 않고** 실패한 필수 검사가
+    # 그대로 남는다. 즉 문서가 안내하는 탈출구가 실제로는 닫혀 있다.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
   workflow_dispatch:
@@ -75,6 +79,9 @@ jobs:
     name: rules-doc
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # 라벨을 API 로 다시 읽기 위해서다. 아래 주석 참고.
     steps:
       - uses: actions/checkout@v5
         with:
@@ -87,7 +94,8 @@ jobs:
       - name: docs/정산-규칙.md 가 함께 고쳐졌는지 확인
         env:
           BASE: ${{ github.base_ref }}
-          EXEMPT: ${{ contains(github.event.pull_request.labels.*.name, 'rules-doc-exempt') }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           export LANG=C.UTF-8 LC_ALL=C.UTF-8
@@ -95,22 +103,44 @@ jobs:
           git fetch --no-tags origin "$BASE"
           RANGE="origin/$BASE...HEAD"
 
+          # 아래가 전부 `grep -q <<< "$변수"` 인 이유: pipefail 과 `grep -q` 를
+          # 파이프로 묶으면 grep 이 첫 일치에서 끝내 앞 명령이 SIGPIPE(141)로 죽고,
+          # **일치했는데 파이프라인은 실패**로 읽힌다. 조용히 틀리는 쪽이라 더 나쁘다.
+          # 그래서 먼저 변수에 담고, 파이프 없이 검사한다.
+
+          # 라벨은 이벤트 페이로드가 아니라 API 로 **지금** 읽는다.
+          # `gh run rerun` 은 원래 페이로드를 그대로 재생하므로, 검사가 실패한 뒤에 붙인
+          # 라벨은 페이로드에 영원히 없다. 실제로 PR #3 이 그렇게 막혔다.
+          LABELS=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --jq '.[].name' || true)
+          EXEMPT=no
+          if grep -qx 'rules-doc-exempt' <<< "$LABELS"; then EXEMPT=yes; fi
+
+          PATCH=$(git diff -U0 "$RANGE" -- src | grep -E '^[+-][^+-]' || true)
+
           MONEY=no
-          if git diff -U0 "$RANGE" -- src \
-             | grep -qE '^[+-][^+-].*(function[[:space:]]+(compute|largestRemainder|sorted)|largestRemainder\(|receiptTotal|perHead|Math\.(floor|round|ceil))'; then
+          # 강한 신호 — 금액 함수 자체이거나 그 입출력 이름이다. 걸러내지 않는다.
+          if grep -qE '(function[[:space:]]+(compute|largestRemainder|sorted)|largestRemainder\(|receiptTotal|perHead)' <<< "$PATCH"; then
+            MONEY=yes
+          fi
+          # 약한 신호 — 맨 Math.floor/round/ceil 은 픽셀 계산에도 쓰인다.
+          # 화면 크기를 다루는 줄은 뺀다. 카메라 사진 축소 코드가 실제로 여기에 걸렸고,
+          # 모든 UI PR 이 걸리는 검사는 라벨 남용을 가르칠 뿐 아무것도 막지 못한다.
+          SOFT=$(grep -vE '(width|height|canvas|px|MAX_EDGE|scroll|client[XY]|devicePixel)' <<< "$PATCH" || true)
+          if grep -qE 'Math\.(floor|round|ceil)' <<< "$SOFT"; then
             MONEY=yes
           fi
 
+          NAMES=$(git diff --name-only "$RANGE")
           DOC=no
-          if git diff --name-only "$RANGE" | grep -qF 'docs/정산-규칙.md'; then DOC=yes; fi
+          if grep -qF 'docs/정산-규칙.md' <<< "$NAMES"; then DOC=yes; fi
 
           echo "금액 로직 변경: $MONEY / 규칙 문서 변경: $DOC / 예외 라벨: $EXEMPT"
 
-          if [ "$MONEY" = yes ] && [ "$DOC" = no ] && [ "$EXEMPT" != true ]; then
+          if [ "$MONEY" = yes ] && [ "$DOC" = no ] && [ "$EXEMPT" != yes ]; then
             echo "::error::금액 계산을 고쳤는데 docs/정산-규칙.md 가 그대로입니다. 규칙 문서를 먼저 고치고 그 문장을 PR 본문에 인용하십시오. 계산 결과가 바뀌지 않는 리팩터링이라면 rules-doc-exempt 라벨을 붙이십시오."
             exit 1
           fi
 
-          if [ "$DOC" = yes ] && ! git diff --name-only "$RANGE" | grep -qF 'tests/split.test.mjs'; then
+          if [ "$DOC" = yes ] && ! grep -qF 'tests/split.test.mjs' <<< "$NAMES"; then
             echo "::warning file=tests/split.test.mjs::규칙 문서가 바뀌었는데 테스트가 그대로입니다. 바뀐 규칙을 고정하는 케이스를 추가했는지 확인하십시오."
           fi
