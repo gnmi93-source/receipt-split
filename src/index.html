@@ -128,7 +128,8 @@
     background: var(--card); border: 1px solid var(--rule); border-radius: 4px;
     box-shadow: var(--shadow); padding: 18px 18px 20px;
   }
-  .head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  /* wrap 이 있어야 좁은 폰에서 제목과 버튼이 서로를 찌그러뜨리지 않고 줄을 바꾼다. */
+  .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; row-gap: 8px; margin-bottom: 14px; }
   .head h2 { font-family: var(--serif); font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
   .head .count { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); letter-spacing: .04em; }
   .head .spacer { flex: 1; }
@@ -357,8 +358,11 @@
           <h2>영수증 항목</h2>
           <span class="count" id="items-count"></span>
           <span class="spacer"></span>
-          <button class="btn sm" id="scan-btn" hidden>영수증 사진 인식</button>
+          <button class="btn sm" id="cam-btn" hidden>영수증 찍기</button>
+          <button class="btn sm" id="scan-btn" hidden>사진 고르기</button>
         </div>
+        <!-- capture 는 누른 버튼에 따라 켜고 끈다. 속성으로 박아 두면 갤러리에서
+             고르는 길이 막히는데, 한 명이 찍어 카톡으로 넘긴 사진을 쓰는 경우가 흔하다. -->
         <input type="file" id="scan-file" accept="image/*" hidden>
         <div id="scan-slot"></div>
 
@@ -924,7 +928,12 @@
     /* 항목 */
     drawScan();
     el("items-count").textContent = c.items.length ? c.items.length + "개" : "";
-    el("items-empty").hidden = c.items.length > 0;
+    const empty = el("items-empty");
+    empty.hidden = c.items.length > 0;
+    // 인식이 없는 배포본에서 "사진을 인식해 주세요" 는 거짓말이다. 버튼도 없다.
+    empty.textContent = sampleFn
+      ? "메뉴를 추가하거나 영수증 사진을 인식해 주세요."
+      : "메뉴를 추가해 주세요.";
     el("gross").textContent = fmt(c.gross);
     syncList(el("items"), c.items.map(it => ({ key: it.id, it })), () => {
       const row = h("div", "irow");
@@ -1299,7 +1308,10 @@
     } else if (scan.error) {
       const acts = h("div", "scan-acts");
       const retry = h("button", "btn sm", "다시 시도");
-      retry.onclick = () => { closeScan(); render(); el("scan-file").click(); };
+      // 찍어서 실패했으면 다시 카메라로 간다. 갤러리로 떨어뜨리면
+      // 흔들린 사진을 다시 고르게 되고 같은 실패를 반복한다.
+      const src = scan.source;
+      retry.onclick = () => { closeScan(); render(); openPicker(src); };
       const cancel = h("button", "btn ghost sm", "닫기");
       cancel.onclick = () => { closeScan(); render(); };
       acts.append(retry, cancel);
@@ -1313,13 +1325,48 @@
     scan = null;
   }
 
-  async function runScan(file) {
+  /* 폰 카메라는 4~12MB JPEG 을 만든다. 그대로 올리면 모바일 데이터에서 한참 걸리고
+     용량 제한에도 걸린다. 긴 변을 1600px 로 줄이면 영수증 글자는 그대로 읽히면서
+     수백 KB 로 떨어진다 — "찍어서 바로" 가 되려면 이 단계가 필요하다.
+     줄이지 못하면 원본을 보낸다. 느린 게 안 되는 것보다 낫다. */
+  const SCAN_MAX_EDGE = 1600;
+  async function shrink(file) {
+    if (typeof createImageBitmap !== "function") return file;
+    let bmp = null;
+    try {
+      // from-image 가 없으면 폰 사진이 EXIF 회전을 잃고 누운 채로 올라간다.
+      bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+      const edge = Math.max(bmp.width, bmp.height);
+      if (edge <= SCAN_MAX_EDGE) return file;
+      const s = SCAN_MAX_EDGE / edge;
+      const cv = h("canvas");
+      cv.width = Math.round(bmp.width * s);
+      cv.height = Math.round(bmp.height * s);
+      cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+      const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.85));
+      if (!blob || blob.size >= file.size) return file;
+      // 이름 없는 Blob 을 그대로 넘기지 않는다. 받는 쪽이 파일명이나 확장자를
+      // 보고 형식을 판단하면 조용히 거절당한다. File 이 없는 환경이면 Blob 으로 간다.
+      return typeof File === "function"
+        ? new File([blob], "receipt.jpg", { type: "image/jpeg" })
+        : blob;
+    } catch {
+      return file;   // HEIC 를 못 읽거나 오래된 브라우저다. 원본으로 간다.
+    } finally {
+      if (bmp) bmp.close();
+    }
+  }
+
+  async function runScan(file, source) {
     closeScan();
-    scan = { status: "영수증을 읽고 있습니다… 10초쯤 걸립니다.", previewUrl: URL.createObjectURL(file), parsed: null, error: null };
+    scan = { status: "사진을 준비하고 있습니다…", previewUrl: URL.createObjectURL(file), parsed: null, error: null, source };
     render();
     drawScan();
     try {
-      const data = await sampleFn.json(SCAN_PROMPT, { images: [file], modelTier: "default" });
+      const img = await shrink(file);
+      scan.status = "영수증을 읽고 있습니다… 10초쯤 걸립니다.";
+      drawScan();
+      const data = await sampleFn.json(SCAN_PROMPT, { images: [img], modelTier: "default" });
       const items = (Array.isArray(data && data.items) ? data.items : [])
         .map(r => ({ name: String((r && r.name) || "").trim(), unitPrice: Math.round(num(r && r.unitPrice)), qty: Math.max(1, Math.round(num(r && r.qty, 1))) }))
         .filter(r => r.name && r.unitPrice >= 0);
@@ -1446,11 +1493,32 @@
     }
   };
 
-  el("scan-btn").onclick = () => el("scan-file").click();
+  /* 파일 입력은 하나만 두고 capture 를 누른 버튼에 따라 켠다. 입력을 둘로 나누면
+     같은 change 처리를 두 번 쓰게 되고, capture 를 속성으로 박아 두면 그 입력에서는
+     갤러리를 못 쓴다. pickSource 는 재시도 때 같은 길을 다시 열기 위해 남긴다. */
+  let pickSource = "file";
+  function openPicker(source) {
+    const f = el("scan-file");
+    pickSource = source;
+    if (source === "camera") f.setAttribute("capture", "environment");
+    else f.removeAttribute("capture");
+    f.click();
+  }
+  el("cam-btn").onclick = () => openPicker("camera");
+  el("scan-btn").onclick = () => openPicker("file");
+
+  /* 인식이 가능해졌을 때만 버튼을 보인다 — 눌러도 아무 일이 없는 버튼보다
+     버튼이 없는 게 낫다. "찍기" 는 손가락으로 쓰는 화면에서만 보인다.
+     데스크톱 브라우저는 capture 를 무시하므로 파일 창이 두 번 열리는 셈이 된다. */
+  function showScanButtons() {
+    el("scan-btn").hidden = false;
+    el("cam-btn").hidden = !(window.matchMedia && matchMedia("(pointer: coarse)").matches);
+    render();
+  }
   el("scan-file").addEventListener("change", e => {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
-    if (file) runScan(file);
+    if (file) runScan(file, pickSource);
   });
 
   render();
@@ -1504,7 +1572,7 @@
         const limits = await s.limits().catch(() => null);
         if (!limits || !limits.images) return;
         sampleFn = s;
-        el("scan-btn").hidden = false;
+        showScanButtons();
       }).catch(() => {});
 
       const d = await claude.use("db").catch(() => null);
